@@ -11,7 +11,7 @@ LDFLAGS += -Wl,--gc-sections
 STATICLIBS := stdperiph/stdperiph.a
 
 OBJS := startup.o system.o init.o
-OBJS += main.o
+OBJS += main.o ws2812.o ws2812_delay.o
 
 all: $(TARGETS)
 

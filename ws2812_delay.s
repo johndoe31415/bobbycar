@@ -21,28 +21,20 @@
  *	Johannes Bauer <JohannesBauer@gmx.de>
 **/
 
-#include <stdio.h>
-#include <stdbool.h>
-#include <stm32f10x_usart.h>
+.syntax unified
+.cpu cortex-m3
+.fpu softvfp
+.thumb
 
-#include "system.h"
+.section .text
+.type ws2812_delay, %function
+ws2812_delay:
+	cbz r0, exit_delay
+	subs r0, 1
+	b ws2812_delay
 
-static void delay(uint32_t duration) {
-	volatile uint32_t ctr = duration;
-	while (ctr--);
-}
 
-int main(void) {
-	while (true) {
-		led_green_toggle();
-		delay(1000000);
-
-		led_orange_toggle();
-		delay(1000000);
-
-		led_red_toggle();
-		delay(1000000);
-
-		USART_SendData(USART1, 'X');
-	}
-}
+	exit_delay:
+	bx lr
+.size ws2812_delay, .-ws2812_delay
+.global ws2812_delay

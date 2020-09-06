@@ -11,7 +11,12 @@
 
 		"PB13": { "name": "ws2812", "mode": "out" },
 
-		"PA9": { "name": "rs232_tx", "mode": "out", "af": "USART1" },
-		"PA10": { "name": "rs232_rx", "mode": "in", "af": "USART1" }
+		"PA9": { "name": "rs232_tx", "mode": "af", "af": "USART1" },
+		"PA10": { "name": "rs232_rx", "mode": "in", "af": "USART1" },
+
+		"PA4": { "name": "w25qxx_cs", "mode": "af", "af": "SPI1" },
+		"PA5": { "name": "w25qxx_sck", "mode": "af", "af": "SPI1" },
+		"PA6": { "name": "w25qxx_miso", "mode": "in", "af": "SPI1" },
+		"PA7": { "name": "w25qxx_mosi", "mode": "af", "af": "SPI1" }
 	}
 }

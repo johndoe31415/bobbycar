@@ -1,5 +1,5 @@
 /**
- *	bobbycar - Hello world program for Cortex-M3.
+ *	bobbycar - Modded Bobby Car toy for toddlers
  *	Copyright (C) 2020-2020 Johannes Bauer
  *
  *	This file is part of bobbycar.
@@ -33,6 +33,7 @@ static void delay(uint32_t duration) {
 }
 
 int main(void) {
+	printf("Device startup complete.\n");
 	while (true) {
 		led_green_toggle();
 		delay(1000000);
@@ -42,7 +43,5 @@ int main(void) {
 
 		led_red_toggle();
 		delay(1000000);
-
-		USART_SendData(USART1, 'X');
 	}
 }

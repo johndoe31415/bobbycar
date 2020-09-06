@@ -21,13 +21,8 @@
  *	Johannes Bauer <JohannesBauer@gmx.de>
 **/
 
-#ifndef __WS2812_H__
-#define __WS2812_H__
+#include "winbond25q64.h"
 
-#include <stm32f10x_gpio.h>
+uint32_t spiflash_read_id(void) {
 
-/*************** AUTO GENERATED SECTION FOLLOWS ***************/
-void ws2812_sendbits(GPIO_TypeDef *port, unsigned int pin_no, unsigned int led_count, const void *led_data);
-/***************  AUTO GENERATED SECTION ENDS   ***************/
-
-#endif
+}

@@ -41,7 +41,7 @@ program: $(PROJECT_NAME).bin
 	echo "reset halt; program $(PROJECT_NAME).bin 0x8000000 reset" | nc -N 127.0.0.1 4444
 
 halgen:
-	mcuconfig project.json .
+	../mcuconfig/mcuconfig project.json .
 
 $(PROJECT_NAME): $(OBJS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(OBJS) $(STATICLIBS)

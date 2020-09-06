@@ -9,6 +9,8 @@
 		"PB1": { "name": "led_orange", "mode": "out" },
 		"PB2": { "name": "led_green", "mode": "out" },
 
+		"PB13": { "name": "ws2812", "mode": "out" },
+
 		"PA9": { "name": "rs232_tx", "mode": "out", "af": "USART1" },
 		"PA10": { "name": "rs232_rx", "mode": "in", "af": "USART1" }
 	}

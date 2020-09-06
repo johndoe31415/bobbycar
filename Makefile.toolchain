@@ -1,0 +1,12 @@
+PREFIX := arm-none-eabi-
+CC := $(PREFIX)gcc
+OBJCOPY := $(PREFIX)objcopy
+OBJDUMP := $(PREFIX)objdump
+AR := $(PREFIX)ar
+GDB := $(PREFIX)gdb
+
+CFLAGS := $(CFLAGS) -std=c11
+CFLAGS += -Wall -Wmissing-prototypes -Wstrict-prototypes -Werror=implicit-function-declaration -Werror=format -Wimplicit-fallthrough -Wshadow
+CFLAGS += -Os -g3
+CFLAGS += -mcpu=cortex-m3 -mthumb
+CFLAGS += -ffunction-sections -fdata-sections

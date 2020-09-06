@@ -1,0 +1,15 @@
+{
+	"name":			"bobbycar",
+	"processor":	"stm32f103c8",
+	"target_clk":	72000000,
+	"clocksrc": 	"hse-pll",
+	"hse-freq":		8000000,
+	"pinmap": {
+		"PB0": { "name": "led_red", "mode": "out" },
+		"PB1": { "name": "led_orange", "mode": "out" },
+		"PB2": { "name": "led_green", "mode": "out" },
+
+		"PA9": { "name": "rs232_tx", "mode": "out", "af": "USART1" },
+		"PA10": { "name": "rs232_rx", "mode": "in", "af": "USART1" }
+	}
+}

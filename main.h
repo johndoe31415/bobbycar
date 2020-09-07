@@ -2,7 +2,7 @@
 #define __MAIN_H__
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
-void system_init(void);
+void SysTick_Handler(void);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif

@@ -14,7 +14,7 @@
 		"PA9": { "name": "rs232_tx", "mode": "af", "af": "USART1" },
 		"PA10": { "name": "rs232_rx", "mode": "in", "af": "USART1" },
 
-		"PA4": { "name": "w25qxx_cs", "mode": "af", "af": "SPI1" },
+		"PA4": { "name": "w25qxx_cs", "mode": "out", "initial": "off", "af": "SPI1", "invert": true },
 		"PA5": { "name": "w25qxx_sck", "mode": "af", "af": "SPI1" },
 		"PA6": { "name": "w25qxx_miso", "mode": "in", "af": "SPI1" },
 		"PA7": { "name": "w25qxx_mosi", "mode": "af", "af": "SPI1" }

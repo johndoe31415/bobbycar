@@ -25,15 +25,33 @@
 #include <stdbool.h>
 #include <stm32f10x_usart.h>
 
+#include "winbond25q64.h"
 #include "system.h"
+#include "main.h"
+
+void SysTick_Handler(void) {
+	led_red_toggle();
+}
 
 static void delay(uint32_t duration) {
 	volatile uint32_t ctr = duration;
 	while (ctr--);
 }
 
+void USART1_Handler(void) {
+	if (USART_GetITStatus(USART1, USART_IT_RXNE)) {
+		USART_ClearITPendingBit(USART1, USART_IT_RXNE);
+		led_green_toggle();
+		printf("\n");
+	}
+}
+
 int main(void) {
 	printf("Device startup complete.\n");
+	spiflash_reset();
+#if 0
+	while (true);
+	//spiflash_selfcheck();
 	while (true) {
 		led_green_toggle();
 		delay(1000000);
@@ -42,6 +60,15 @@ int main(void) {
 		delay(1000000);
 
 		led_red_toggle();
+		delay(1000000);
+
+		struct spiflash_manufacturer_t id = spiflash_read_id_dma();
+		printf("ID %x %x\n", id.manufacturer_id, id.device_id);
+	}
+#endif
+	while (true) {
+		struct spiflash_manufacturer_t id = spiflash_read_id_dma();
+		printf("ID %x %x\n", id.manufacturer_id, id.device_id);
 		delay(1000000);
 	}
 }

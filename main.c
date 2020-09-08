@@ -68,7 +68,7 @@ int main(void) {
 #endif
 	while (true) {
 		struct spiflash_manufacturer_t id = spiflash_read_id_dma();
-		printf("ID %x %x\n", id.manufacturer_id, id.device_id);
+		printf("ID %x / %x\n", id.manufacturer_id, id.device_id);
 		delay(1000000);
 	}
 }

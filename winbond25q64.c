@@ -64,11 +64,9 @@ void DMA1_Channel2_Handler(void) {
 
 void DMA1_Channel3_Handler(void) {
 	DMA_Channel_TypeDef *dma_channel_tx = DMA1_Channel3;
-	DMA_Channel_TypeDef *dma_channel_rx = DMA1_Channel2;
 	if (DMA_GetITStatus(DMA1_IT_TC3)) {
 		DMA_ClearITPendingBit(DMA1_IT_TC3);
 		DMA_Cmd(dma_channel_tx, DISABLE);
-
 	}
 }
 
@@ -85,6 +83,16 @@ static void spiflash_txrx_dma(void *vdata, unsigned int length) {
 	SPI_I2S_DMACmd(SPI1, SPI_I2S_DMAReq_Tx | SPI_I2S_DMAReq_Rx, ENABLE);
 }
 
+static bool dma_channel_active(DMA_Channel_TypeDef *dma_channel) {
+	return (dma_channel->CCR) & 1;
+}
+
+static void spiflash_dma_wait(void) {
+	DMA_Channel_TypeDef *dma_channel_tx = DMA1_Channel3;
+	DMA_Channel_TypeDef *dma_channel_rx = DMA1_Channel2;
+	while ((dma_channel_active(dma_channel_tx)) || (dma_channel_active(dma_channel_rx)));
+}
+
 struct spiflash_manufacturer_t spiflash_read_id(void) {
 	uint8_t data[6] = { SPIFLASH_READ_MANUFACTURER };
 	spiflash_txrx(data, sizeof(data));
@@ -96,13 +104,10 @@ struct spiflash_manufacturer_t spiflash_read_id(void) {
 }
 
 struct spiflash_manufacturer_t spiflash_read_id_dma(void) {
-	static uint8_t data[6];
-	memset(data, 0, sizeof(data));
-	data[0] = SPIFLASH_READ_MANUFACTURER;
-//	   	= { SPIFLASH_READ_MANUFACTURER, 0, 0, 0, 0, 0  };
+	uint8_t data[6] = { SPIFLASH_READ_MANUFACTURER };
 	spiflash_txrx_dma(data, 6);
+	spiflash_dma_wait();
 
-	for (volatile int i = 0; i < 1000000; i++);
 	return (struct spiflash_manufacturer_t){
 		.manufacturer_id = data[4],
 		.device_id = data[5],

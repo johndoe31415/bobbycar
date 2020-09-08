@@ -1,3 +1,26 @@
+/**
+ *	bobbycar - Modded Bobby Car toy for toddlers
+ *	Copyright (C) 2020-2020 Johannes Bauer
+ *
+ *	This file is part of bobbycar.
+ *
+ *	bobbycar is free software; you can redistribute it and/or modify
+ *	it under the terms of the GNU General Public License as published by
+ *	the Free Software Foundation; this program is ONLY licensed under
+ *	version 3 of the License, later versions are explicitly excluded.
+ *
+ *	bobbycar is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU General Public License for more details.
+ *
+ *	You should have received a copy of the GNU General Public License
+ *	along with bobbycar; if not, write to the Free Software
+ *	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ *	Johannes Bauer <JohannesBauer@gmx.de>
+**/
+
 #include <stm32f10x_rcc.h>
 #include <stm32f10x_usart.h>
 #include <stm32f10x_spi.h>
@@ -39,7 +62,6 @@ static void init_spi(void) {
 		.SPI_CRCPolynomial = 0,
 	});
 	SPI_Cmd(SPI1, ENABLE);
-	// SPI_SSOutputCmd
 }
 
 void init_spi_dma(void *vdata, unsigned int length) {
@@ -95,7 +117,7 @@ static void init_nvic(void) {
 	NVIC_Init(&(NVIC_InitTypeDef){
 		.NVIC_IRQChannel = DMA1_Channel3_IRQn,
 		.NVIC_IRQChannelPreemptionPriority = 3,
-		.NVIC_IRQChannelSubPriority = 3,
+		.NVIC_IRQChannelSubPriority = 2,
 		.NVIC_IRQChannelCmd = ENABLE,
 	});
 

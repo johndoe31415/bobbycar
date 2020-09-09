@@ -17,6 +17,8 @@
 		"PA4": { "name": "w25qxx_cs", "mode": "out", "initial": "off", "af": "SPI1", "invert": true },
 		"PA5": { "name": "w25qxx_sck", "mode": "af", "initial": "off", "af": "SPI1" },
 		"PA6": { "name": "w25qxx_miso", "mode": "in", "af": "SPI1" },
-		"PA7": { "name": "w25qxx_mosi", "mode": "af", "af": "SPI1" }
+		"PA7": { "name": "w25qxx_mosi", "mode": "af", "af": "SPI1" },
+
+		"PA8": { "name": "audio_pwm", "mode": "af", "af": "TIM1", "speed": 50 }
 	}
 }

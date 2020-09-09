@@ -25,6 +25,7 @@
 #include <stm32f10x_usart.h>
 #include <stm32f10x_spi.h>
 #include <stm32f10x_dma.h>
+#include <stm32f10x_tim.h>
 #include <stm32f10x.h>
 #include <misc.h>
 #include "system.h"
@@ -128,6 +129,54 @@ static void init_nvic(void) {
 		.NVIC_IRQChannelSubPriority = 3,
 		.NVIC_IRQChannelCmd = ENABLE,
 	});
+
+	/* Update PWM Timer */
+	NVIC_Init(&(NVIC_InitTypeDef){
+		.NVIC_IRQChannel = TIM2_IRQn,
+		.NVIC_IRQChannelPreemptionPriority = 3,
+		.NVIC_IRQChannelSubPriority = 0,
+		.NVIC_IRQChannelCmd = ENABLE,
+	});
+}
+
+static void init_pwm(void) {
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1, ENABLE);
+	TIM_TimeBaseInit(TIM1, &(TIM_TimeBaseInitTypeDef){
+		.TIM_Period = 254,
+		.TIM_Prescaler = 0,
+		.TIM_ClockDivision = 0,
+		.TIM_CounterMode = TIM_CounterMode_Up,
+	});
+	TIM_ARRPreloadConfig(TIM1, ENABLE);
+	TIM_OC1Init(TIM1, &(TIM_OCInitTypeDef){
+		.TIM_OCMode = TIM_OCMode_PWM1,
+		.TIM_OutputState = TIM_OutputState_Enable,
+		.TIM_Pulse = 0,
+		.TIM_OCPolarity = TIM_OCPolarity_High,
+	});
+	TIM_OC1PreloadConfig(TIM1, TIM_OCPreload_Enable);
+	TIM_CtrlPWMOutputs(TIM1, ENABLE);
+	TIM_Cmd(TIM1, ENABLE);
+}
+
+void TIM2_Handler(void) {
+	if (TIM_GetITStatus(TIM2, TIM_IT_CC1) != RESET)   {
+		TIM1->CCR1 = (TIM1->CCR1 + 1) & 0xff;
+		TIM_ClearITPendingBit(TIM2, TIM_IT_CC1);
+	}
+}
+
+static void init_pwm_update_timer(void) {
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
+	TIM_TimeBaseInit(TIM2, &(TIM_TimeBaseInitTypeDef){
+		.TIM_Period = 653,			// 11025 Hz
+		.TIM_Prescaler = 4,
+		.TIM_ClockDivision = 0,
+		.TIM_CounterMode = TIM_CounterMode_Up,
+	});
+	TIM_ARRPreloadConfig(TIM2, ENABLE);
+	TIM_ITConfig(TIM2, TIM_IT_CC1, ENABLE);
+	TIM_Cmd(TIM2, ENABLE);
 }
 
 static void init_systick(void) {
@@ -138,6 +187,8 @@ static void init_systick(void) {
 void system_init(void) {
 	init_usart();
 	init_spi();
+	init_pwm();
+	init_pwm_update_timer();
 	init_nvic();
 	init_systick();
 }

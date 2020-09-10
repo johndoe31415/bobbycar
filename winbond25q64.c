@@ -71,6 +71,8 @@ void DMA1_Channel3_Handler(void) {
 }
 
 static void spiflash_txrx_dma(void *vdata, unsigned int length) {
+	first = true;
+
 	w25qxx_cs_set_active();
 	DMA_Channel_TypeDef *dma_channel_tx = DMA1_Channel3;
 	DMA_Channel_TypeDef *dma_channel_rx = DMA1_Channel2;

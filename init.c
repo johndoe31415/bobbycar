@@ -48,6 +48,10 @@ static void init_usart(void) {
 	USART_Cmd(USART1, ENABLE);
 }
 
+static void init_crc(void) {
+	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_CRC, ENABLE);
+}
+
 static void init_spi(void) {
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_SPI1, ENABLE);
 
@@ -161,7 +165,9 @@ static void init_pwm(void) {
 
 void TIM2_Handler(void) {
 	if (TIM_GetITStatus(TIM2, TIM_IT_CC1) != RESET)   {
+#if 0
 		TIM1->CCR1 = (TIM1->CCR1 + 1) & 0xff;
+#endif
 		TIM_ClearITPendingBit(TIM2, TIM_IT_CC1);
 	}
 }
@@ -185,6 +191,7 @@ static void init_systick(void) {
 }
 
 void system_init(void) {
+	init_crc();
 	init_usart();
 	init_spi();
 	init_pwm();

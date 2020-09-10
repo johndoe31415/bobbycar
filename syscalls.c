@@ -26,8 +26,9 @@
 #include <stdbool.h>
 #include <sys/stat.h>
 #include <stm32f10x_usart.h>
-
+#include "usart.h"
 #include "syscalls.h"
+#include "system.h"
 
 extern uint8_t _ebss;
 static uint8_t *current_break = &_ebss;
@@ -42,23 +43,18 @@ void _exit(int status) {
 	while (true);
 }
 
-static void usart_transmitchar(char character) {
-	while (USART_GetFlagStatus(USART1, USART_FLAG_TXE) == RESET);
-	USART_SendData(USART1, character);
-}
-
 ssize_t _write_r(struct _reent *reent, int fd, const void *data, size_t length) {
 	if ((fd == STDOUT_FILENO) || (fd == STDERR_FILENO)) {
+		led_red_toggle();
 		for (size_t i = 0; i < length; i++) {
 			char c = ((char*)data)[i];
 			if (c == '\n') {
-				usart_transmitchar('\r');
+				usart_transmit_char('\r');
 			}
-			usart_transmitchar(c);
+			usart_transmit_char(c);
 		}
-		return length;
 	}
-	return 0;
+	return length;
 }
 
 int _close_r(struct _reent *reent, int fd) {

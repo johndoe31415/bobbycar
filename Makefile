@@ -1,4 +1,4 @@
-.PHONY: all clean openocd ocdconsole gdb reset flashdump program halgen
+.PHONY: all clean openocd ocdconsole gdb reset flashdump program halgen console
 
 include Makefile.toolchain
 
@@ -11,9 +11,12 @@ LDFLAGS += -Wl,--gc-sections
 STATICLIBS := stdperiph/stdperiph.a
 
 OBJS := startup.o system.o init.o
-OBJS += main.o ws2812.o ws2812_delay.o syscalls.o winbond25q64.o
+OBJS += main.o ws2812.o ws2812_delay.o syscalls.o winbond25q64.o usart.o usart_terminal.o
 
 all: $(TARGETS)
+
+console:
+	picocom --baud 921600 /dev/ttyUSB0
 
 clean:
 	rm -f $(OBJS) $(TARGETS)

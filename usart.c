@@ -22,46 +22,28 @@
 **/
 
 #include <stdio.h>
-#include <stdbool.h>
 #include <stm32f10x_usart.h>
-
-#include "winbond25q64.h"
+#include <stm32f10x_crc.h>
+#include "usart.h"
 #include "system.h"
-#include "main.h"
+#include "usart_terminal.h"
 
-void SysTick_Handler(void) {
-//	led_red_toggle();
+void usart_transmit_char(char character) {
+	led_orange_toggle();
+	while (USART_GetFlagStatus(USART1, USART_FLAG_TXE) == RESET);
+	USART_SendData(USART1, character);
 }
 
-static void delay(uint32_t duration) {
-	volatile uint32_t ctr = duration;
-	while (ctr--);
-}
-
-int main(void) {
-	printf("Device startup complete: %02x\n", 123);
-	//spiflash_reset();
-#if 0
-	while (true);
-	//spiflash_selfcheck();
-	while (true) {
+void USART1_Handler(void) {
+	if (USART_GetITStatus(USART1, USART_IT_RXNE)) {
 		led_green_toggle();
-		delay(1000000);
-
-		led_orange_toggle();
-		delay(1000000);
-
-		led_red_toggle();
-		delay(1000000);
-
-		struct spiflash_manufacturer_t id = spiflash_read_id_dma();
-		printf("ID %x %x\n", id.manufacturer_id, id.device_id);
-	}
+		char received_char = USART_ReceiveData(USART1);
+		USART_ClearITPendingBit(USART1, USART_IT_RXNE);
+		usart_terminal_rx(received_char);
+#if 0
+		CRC_ResetDR();
+		uint32_t crc = CRC_CalcBlockCRC((uint32_t*)"ABCD", 1);
+		printf("ABCD = 0x%lx\n", crc);
 #endif
-	int i = 0;
-	while (true) {
-		struct spiflash_manufacturer_t id = spiflash_read_id_dma();
-		printf("%d: ID %x / %x\n", i++, id.manufacturer_id, id.device_id);
-		delay(1000000);
 	}
 }

@@ -19,6 +19,9 @@
 		"PA6": { "name": "w25qxx_miso", "mode": "in", "af": "SPI1" },
 		"PA7": { "name": "w25qxx_mosi", "mode": "af", "af": "SPI1" },
 
-		"PA8": { "name": "audio_pwm", "mode": "af", "af": "TIM1", "speed": 50 }
+		"PA8": { "name": "audio_pwm", "mode": "af", "af": "TIM1", "speed": 50 },
+
+		"PA12": { "name": "power_on", "mode": "in" },
+		"PB9": { "name": "power_set", "mode": "out", "initial": "off" }
 	}
 }

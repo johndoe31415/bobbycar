@@ -106,6 +106,16 @@
 #define rs232_rx_is_active()		rs232_rx_is_high()
 #define rs232_rx_is_inactive()	rs232_rx_is_low()
 
+// power_on: PA12, mode = InputFloat
+#define power_on_PORT				GPIOA
+#define power_on_PIN				12
+#define power_on_MASK				(1 << power_on_PIN)
+#define power_on_get()			((power_on_PORT->IDR >> power_on_PIN) & 1)
+#define power_on_is_high()		(power_on_get() != 0)
+#define power_on_is_low()			(power_on_get() == 0)
+#define power_on_is_active()		power_on_is_high()
+#define power_on_is_inactive()	power_on_is_low()
+
 // led_red: PB0, mode = OutputPushPull
 #define led_red_PORT				GPIOB
 #define led_red_PIN				0
@@ -150,6 +160,21 @@
 #define led_green_is_low()			(led_green_get() == 0)
 #define led_green_is_active()		led_green_is_high()
 #define led_green_is_inactive()	led_green_is_low()
+
+// power_set: PB9, mode = OutputPushPull
+#define power_set_PORT				GPIOB
+#define power_set_PIN				9
+#define power_set_MASK				(1 << power_set_PIN)
+#define power_set_set_high()		power_set_PORT->BSRR = power_set_MASK
+#define power_set_set_low()		power_set_PORT->BRR = power_set_MASK
+#define power_set_set_active()		power_set_set_high()
+#define power_set_set_inactive()	power_set_set_low()
+#define power_set_toggle()			power_set_PORT->ODR ^= power_set_MASK
+#define power_set_get()			((power_set_PORT->IDR >> power_set_PIN) & 1)
+#define power_set_is_high()		(power_set_get() != 0)
+#define power_set_is_low()			(power_set_get() == 0)
+#define power_set_is_active()		power_set_is_high()
+#define power_set_is_inactive()	power_set_is_low()
 
 // ws2812: PB13, mode = OutputPushPull
 #define ws2812_PORT				GPIOB

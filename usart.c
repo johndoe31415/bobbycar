@@ -29,14 +29,12 @@
 #include "usart_terminal.h"
 
 void usart_transmit_char(char character) {
-	led_orange_toggle();
 	while (USART_GetFlagStatus(USART1, USART_FLAG_TXE) == RESET);
 	USART_SendData(USART1, character);
 }
 
 void USART1_Handler(void) {
 	if (USART_GetITStatus(USART1, USART_IT_RXNE)) {
-		led_green_toggle();
 		char received_char = USART_ReceiveData(USART1);
 		USART_ClearITPendingBit(USART1, USART_IT_RXNE);
 		usart_terminal_rx(received_char);

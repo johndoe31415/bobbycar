@@ -71,6 +71,7 @@ static void gpio_init(void) {
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
 	w25qxx_cs_set_inactive();
+	power_set_set_inactive();
 	GPIO_Init(GPIOA, &(GPIO_InitTypeDef){
 			.GPIO_Pin = GPIO_Pin_5 | GPIO_Pin_7 | GPIO_Pin_9,
 			.GPIO_Mode = GPIO_Mode_AF_PP,
@@ -82,7 +83,7 @@ static void gpio_init(void) {
 			.GPIO_Speed = GPIO_Speed_50MHz,
 	});
 	GPIO_Init(GPIOA, &(GPIO_InitTypeDef){
-			.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_10,
+			.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_10 | GPIO_Pin_12,
 			.GPIO_Mode = GPIO_Mode_IN_FLOATING,
 			.GPIO_Speed = GPIO_Speed_2MHz,
 	});
@@ -92,7 +93,7 @@ static void gpio_init(void) {
 			.GPIO_Speed = GPIO_Speed_2MHz,
 	});
 	GPIO_Init(GPIOB, &(GPIO_InitTypeDef){
-			.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1 | GPIO_Pin_2 | GPIO_Pin_13,
+			.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1 | GPIO_Pin_2 | GPIO_Pin_9 | GPIO_Pin_13,
 			.GPIO_Mode = GPIO_Mode_Out_PP,
 			.GPIO_Speed = GPIO_Speed_2MHz,
 	});

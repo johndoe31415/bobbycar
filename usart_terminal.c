@@ -160,6 +160,9 @@ static void binary_reply(enum commandcodes_t command_code, const void *payload, 
 	cmd->total_length = total_length;
 	cmd->payload.command_code = command_code;
 	memcpy(cmd->payload.data, payload, payload_length);
+
+	/* We need to invert the CRC for the response because otherwise commands
+	 * sent in ASCII mode that are echoed back to the host are valid responses. */
 	cmd->crc = compute_crc32(&cmd->payload, cmd->total_length - 8) ^ 0xa5a5a5a5;
 	for (unsigned int i = 0; i < total_length; i++) {
 		usart_transmit_char(data[i]);

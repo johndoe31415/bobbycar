@@ -1,0 +1,10 @@
+#!/bin/bash
+if [ "$2" == "" ]; then
+	echo "Convert an input file (e.g., video) to audio (WAV)."
+	echo "$0 [input] [output]"
+	echo
+	echo "example: $0 foobar.mp4 foobar.wav"
+	exit 1
+fi
+
+ffmpeg -i "$1" -vn -ar 44100 -ac 2 -f wav "$2"

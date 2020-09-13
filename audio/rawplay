@@ -1,0 +1,10 @@
+#!/bin/bash
+if [ "$1" == "" ]; then
+	echo "Playback a RAW file in an endless loop."
+	echo "$0 [input]"
+	echo
+	echo "example: $0 foobar.raw"
+	exit 1
+fi
+
+play -r 11025 -e unsigned -b 8 -c 1 -t raw /tmp/audio.raw repeat 30

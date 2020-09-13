@@ -21,12 +21,12 @@
  *	Johannes Bauer <JohannesBauer@gmx.de>
 **/
 
-#ifndef __MAIN_H__
-#define __MAIN_H__
+#ifndef __CRC32_H__
+#define __CRC32_H__
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
-void SysTick_Handler(void);
-void TIM2_Handler(void);
+uint32_t compute_crc32(const void *data, uint32_t length);
+void crc_selftest(void);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif

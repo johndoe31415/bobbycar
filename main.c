@@ -23,23 +23,28 @@
 
 #include <stdio.h>
 #include <stdbool.h>
+#include <stm32f10x_tim.h>
 #include <stm32f10x_usart.h>
 
-#include "winbond25q64.h"
+#include "usart_terminal.h"
 #include "system.h"
 #include "main.h"
+#include "audio.h"
 
 void SysTick_Handler(void) {
 //	led_red_toggle();
+	usart_terminal_tick();
 }
 
-static void delay(uint32_t duration) {
-	volatile uint32_t ctr = duration;
-	while (ctr--);
+void TIM2_Handler(void) {
+	if (TIM_GetITStatus(TIM2, TIM_IT_CC1) != RESET)   {
+		TIM1->CCR1 = audio_next_sample();
+		TIM_ClearITPendingBit(TIM2, TIM_IT_CC1);
+	}
 }
 
 int main(void) {
-	printf("Device startup complete: %02x\n", 123);
+	printf("Device startup complete.\n");
 	//spiflash_reset();
 #if 0
 	while (true);
@@ -58,10 +63,22 @@ int main(void) {
 		printf("ID %x %x\n", id.manufacturer_id, id.device_id);
 	}
 #endif
-	int i = 0;
 	while (true) {
-		struct spiflash_manufacturer_t id = spiflash_read_id_dma();
-		printf("%d: ID %x / %x\n", i++, id.manufacturer_id, id.device_id);
-		delay(1000000);
+		/*
+		printf("status: %x\n", spiflash_read_status());
+
+		uint8_t data[80];
+		spiflash_read(0, data, sizeof(data));
+		for (int i = 0; i < sizeof(data); i++) printf("%02x", data[i]);
+		printf("\n");
+
+		if (data[1] == 0) {
+			printf("erasing...\n");
+			spiflash_erase_sector(0);
+			printf("erase done.\n");
+		}
+
+		delay(10000000);
+*/
 	}
 }

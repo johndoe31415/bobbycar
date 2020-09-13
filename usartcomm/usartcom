@@ -1,0 +1,158 @@
+#!/usr/bin/python3
+#
+#	bobbycar - Modded Bobby Car toy for toddlers
+#	Copyright (C) 2020-2020 Johannes Bauer
+#
+#	This file is part of bobbycar.
+#
+#	bobbycar is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	bobbycar is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with bobbycar; if not, write to the Free Software
+#	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import sys
+import zlib
+import struct
+import collections
+import time
+import enum
+import argparse
+import serial
+from FriendlyArgumentParser import FriendlyArgumentParser
+
+CommandIdentify = collections.namedtuple("CommandIdentify", [ "name" ])
+CommandReadPage = collections.namedtuple("CommandReadPage", [ "name", "page_begin", "page_end" ])
+CommandWritePages = collections.namedtuple("CommandWritePages", [ "name", "page_begin", "pages" ])
+def _command(text):
+	split_text = text.split(":")
+	cmdname = split_text[0].lower()
+	if cmdname == "identify":
+		return CommandIdentify(name = cmdname)
+	elif cmdname == "readpage":
+		page_begin = int(split_text[1])
+		if len(split_text) > 2:
+			page_end = int(split_text[2])
+		else:
+			page_end = page_begin
+		return CommandReadPage(name = cmdname, page_begin = page_begin, page_end = page_end)
+	elif cmdname == "writefile":
+		page_begin = int(split_text[1])
+		filename = split_text[2]
+		with open(filename, "rb") as f:
+			content = f.read()
+		pages = [ content[i : i + 256] for i in range(0, len(content), 256) ]
+		return CommandWritePages(name = "writepages", page_begin = page_begin, pages = pages)
+	else:
+		raise argparse.ArgumentTypeError("Unsupported command: %s" % (text))
+
+parser = FriendlyArgumentParser(description = "Simple example application.")
+parser.add_argument("-d", "--devpath", metavar = "filename", type = str, default = "/dev/ttyUSB0", help = "Specifies device to use. Defaults to %(default)s.")
+parser.add_argument("--baudrate", metavar = "baud", type = int, default = 921600, help = "Specifies baud rate use. Defaults to %(default)d baud.")
+parser.add_argument("-v", "--verbose", action = "count", default = 0, help = "Increases verbosity. Can be specified multiple times to increase.")
+parser.add_argument("command", metavar = "command", type = _command, nargs = "+", help = "Command(s) to be executed.")
+
+args = parser.parse_args(sys.argv[1:])
+
+class CommandCode(enum.IntEnum):
+	Identify = 1
+	ReadPage = 2
+	EraseSector = 3
+	WritePage = 4
+	Error = 0xdeadbeef
+
+class Communicator():
+	Frame = collections.namedtuple("Frame", [ "cmd_code", "payload" ])
+	def __init__(self, args):
+		self._args = args
+		self._dev = serial.Serial(self._args.devpath, baudrate = self._args.baudrate, timeout = 0.1)
+		if self.identify() is None:
+			self._attempt_switch_binary()
+
+	def _attempt_switch_binary(self):
+		self._dev.write(b"\r\n")
+		self._receive(timeout = 0.2)
+		self._dev.write(b"binary\r\n")
+		self._receive(timeout = 0.4)
+		if self.identify() is None:
+			raise Exception("Unable to establish connection to device.")
+
+	def _decode_frame(self, data):
+		#print("Decode len %d: %s" % (len(data), data.hex()))
+		if len(data) < 12:
+			return None
+		(length, crc, cmd_code) = struct.unpack("<L L L", data[:12])
+		crc = crc ^ 0xa5a5a5a5
+		if len(data) < length:
+			return None
+		computed_crc = zlib.crc32(data[8 : length])
+		if computed_crc == crc:
+			return self.Frame(cmd_code = CommandCode(cmd_code), payload = data[12 : length])
+		else:
+			return None
+
+	def _receive(self, timeout):
+		end_time = time.time() + timeout
+		rx_buffer = bytearray()
+		frame = None
+		while True:
+			rx_buffer += self._dev.read(1024)
+			frame = self._decode_frame(rx_buffer)
+			if frame is not None:
+				break
+			if time.time() >= end_time:
+				break
+		return frame
+
+	def _send(self, command_code, payload = None, timeout = 0.1):
+		if payload is None:
+			payload = bytes()
+		inner_payload = struct.pack("<L", command_code) + payload
+		crc = zlib.crc32(inner_payload)
+		packet = struct.pack("< L L", len(inner_payload) + 8, crc) + inner_payload
+		self._dev.write(packet)
+		return self._receive(timeout)
+
+	def identify(self):
+		return self._send(CommandCode.Identify)
+
+	def read_page(self, page_no):
+		return self._send(CommandCode.ReadPage, struct.pack("<L", page_no))
+
+	def write_page(self, page_no, page_data):
+		if len(page_data) < 256:
+			page_data = page_data + bytes([ 0xff ] * (256 - len(page_data)))
+		return self._send(CommandCode.WritePage, struct.pack("<L 256s", page_no, page_data), timeout = 30)
+
+	def erase_sector(self, sector_no):
+		if self._args.verbose >= 1:
+			print("Erasing sector %d." % (sector_no))
+		return self._send(CommandCode.EraseSector, struct.pack("<L", sector_no))
+
+	def execute(self, command):
+		if command.name == "identify":
+			print(self.identify())
+		elif command.name == "readpage":
+			for page_no in range(command.page_begin, command.page_end + 1):
+				rsp = self.read_page(page_no)
+				print(rsp)
+		elif command.name == "writepages":
+			print("Writing %d pages." % (len(command.pages)))
+			for (page_no, page_data) in enumerate(command.pages, command.page_begin):
+				if (page_no % 16) == 0:
+					self.erase_sector(page_no // 16)
+				self.write_page(page_no, page_data)
+
+comm = Communicator(args)
+for command in args.command:
+	comm.execute(command)

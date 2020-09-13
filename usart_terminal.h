@@ -3,6 +3,7 @@
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
 void usart_terminal_rx(char character);
+void usart_terminal_tick(void);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif

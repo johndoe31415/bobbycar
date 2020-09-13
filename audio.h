@@ -21,12 +21,13 @@
  *	Johannes Bauer <JohannesBauer@gmx.de>
 **/
 
-#ifndef __MAIN_H__
-#define __MAIN_H__
+#ifndef __AUDIO_H__
+#define __AUDIO_H__
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
-void SysTick_Handler(void);
-void TIM2_Handler(void);
+void audio_file_new(unsigned int disk_offset, unsigned int file_length);
+uint8_t audio_next_sample(void);
+void audio_playback(void);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif

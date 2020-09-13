@@ -67,6 +67,7 @@ static void init_spi(void) {
 		.SPI_CRCPolynomial = 0,
 	});
 	SPI_Cmd(SPI1, ENABLE);
+	SPI_I2S_ITConfig(SPI1, SPI_I2S_IT_ERR, ENABLE);
 }
 
 void init_spi_dma(void *vdata, unsigned int length) {
@@ -126,6 +127,14 @@ static void init_nvic(void) {
 		.NVIC_IRQChannelCmd = ENABLE,
 	});
 
+	/* SPI1 ERR (on DMA1 <-> SPI1 overrun) */
+	NVIC_Init(&(NVIC_InitTypeDef){
+		.NVIC_IRQChannel = SPI1_IRQn,
+		.NVIC_IRQChannelPreemptionPriority = 3,
+		.NVIC_IRQChannelSubPriority = 1,
+		.NVIC_IRQChannelCmd = ENABLE,
+	});
+
 	/* USART TXC */
 	NVIC_Init(&(NVIC_InitTypeDef){
 		.NVIC_IRQChannel = USART1_IRQn,
@@ -163,19 +172,10 @@ static void init_pwm(void) {
 	TIM_Cmd(TIM1, ENABLE);
 }
 
-void TIM2_Handler(void) {
-	if (TIM_GetITStatus(TIM2, TIM_IT_CC1) != RESET)   {
-#if 0
-		TIM1->CCR1 = (TIM1->CCR1 + 1) & 0xff;
-#endif
-		TIM_ClearITPendingBit(TIM2, TIM_IT_CC1);
-	}
-}
-
 static void init_pwm_update_timer(void) {
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
 	TIM_TimeBaseInit(TIM2, &(TIM_TimeBaseInitTypeDef){
-		.TIM_Period = 653,			// 11025 Hz
+		.TIM_Period = 1306,			// 11025 Hz
 		.TIM_Prescaler = 4,
 		.TIM_ClockDivision = 0,
 		.TIM_CounterMode = TIM_CounterMode_Up,

@@ -30,6 +30,12 @@
 #include "winbond25q64.h"
 #include "init.h"
 
+static volatile enum dma_state_t dma_state;
+
+enum dma_state_t spiflash_get_dma_state(void) {
+	return dma_state;
+}
+
 static uint8_t spiflash_txrx_byte(uint8_t send_byte) {
 	/* Wait until transmit register empty, then send */
 	while (SPI_I2S_GetFlagStatus(SPI1, SPI_I2S_FLAG_TXE) == RESET);
@@ -53,12 +59,34 @@ static void spiflash_txrx(void *vdata, unsigned int length) {
 	w25qxx_cs_set_inactive();
 }
 
+void SPI1_Handler(void) {
+	/* SPI1 OVR -> Error; abort DMA */
+
+	DMA_Channel_TypeDef *dma_channel_rx = DMA1_Channel2;
+	DMA_Channel_TypeDef *dma_channel_tx = DMA1_Channel3;
+
+	SPI_I2S_DMACmd(SPI1, SPI_I2S_DMAReq_Tx | SPI_I2S_DMAReq_Rx, DISABLE);
+	DMA_Cmd(dma_channel_rx, DISABLE);
+	DMA_Cmd(dma_channel_tx, DISABLE);
+
+	(void)SPI1->DR; /* Read out DR */
+	(void)SPI1->SR; /* Read out SR */
+
+	SPI_I2S_ClearITPendingBit(SPI1, SPI_I2S_IT_ERR);
+	w25qxx_cs_set_inactive();
+	dma_state = DMA_ERROR;
+}
+
 void DMA1_Channel2_Handler(void) {
 	DMA_Channel_TypeDef *dma_channel_rx = DMA1_Channel2;
 	if (DMA_GetITStatus(DMA1_IT_TC2)) {
+		SPI_I2S_DMACmd(SPI1, SPI_I2S_DMAReq_Tx | SPI_I2S_DMAReq_Rx, DISABLE);
 		DMA_ClearITPendingBit(DMA1_IT_TC2);
 		DMA_Cmd(dma_channel_rx, DISABLE);
 		w25qxx_cs_set_inactive();
+		if (dma_state == DMA_IN_PROGRESS) {
+			dma_state = DMA_SUCCESS;
+		}
 	}
 }
 
@@ -70,8 +98,8 @@ void DMA1_Channel3_Handler(void) {
 	}
 }
 
-static void spiflash_txrx_dma(void *vdata, unsigned int length) {
-	first = true;
+void spiflash_txrx_dma(void *vdata, unsigned int length) {
+	dma_state = DMA_IN_PROGRESS;
 
 	w25qxx_cs_set_active();
 	DMA_Channel_TypeDef *dma_channel_tx = DMA1_Channel3;
@@ -85,14 +113,15 @@ static void spiflash_txrx_dma(void *vdata, unsigned int length) {
 	SPI_I2S_DMACmd(SPI1, SPI_I2S_DMAReq_Tx | SPI_I2S_DMAReq_Rx, ENABLE);
 }
 
-static bool dma_channel_active(DMA_Channel_TypeDef *dma_channel) {
-	return (dma_channel->CCR) & 1;
-}
+//static bool dma_channel_active(DMA_Channel_TypeDef *dma_channel) {
+//	return (dma_channel->CCR) & 1;
+//}
 
 static void spiflash_dma_wait(void) {
-	DMA_Channel_TypeDef *dma_channel_tx = DMA1_Channel3;
-	DMA_Channel_TypeDef *dma_channel_rx = DMA1_Channel2;
-	while ((dma_channel_active(dma_channel_tx)) || (dma_channel_active(dma_channel_rx)));
+//	DMA_Channel_TypeDef *dma_channel_tx = DMA1_Channel3;
+//	DMA_Channel_TypeDef *dma_channel_rx = DMA1_Channel2;
+	while (dma_state == DMA_IN_PROGRESS);
+//	while ((dma_channel_active(dma_channel_tx)) || (dma_channel_active(dma_channel_rx)));
 }
 
 struct spiflash_manufacturer_t spiflash_read_id(void) {
@@ -109,11 +138,47 @@ struct spiflash_manufacturer_t spiflash_read_id_dma(void) {
 	uint8_t data[6] = { SPIFLASH_READ_MANUFACTURER };
 	spiflash_txrx_dma(data, 6);
 	spiflash_dma_wait();
-
 	return (struct spiflash_manufacturer_t){
 		.manufacturer_id = data[4],
 		.device_id = data[5],
 	};
+}
+
+uint16_t spiflash_read_status(void) {
+	uint16_t status = 0;
+
+	{
+		uint8_t data[2] = { SPIFLASH_READ_STATUS1 };
+		spiflash_txrx(data, sizeof(data));
+		status |= data[1];
+	}
+	{
+		uint8_t data[2] = { SPIFLASH_READ_STATUS2 };
+		spiflash_txrx(data, sizeof(data));
+		status |= (data[1] << 8);
+	}
+
+	return status;
+}
+
+void spiflash_wait_finished(void) {
+	uint16_t status;
+	do {
+		status = spiflash_read_status();
+	} while (status & SPIFLASH_STATUS_BUSY);
+}
+
+void spiflash_erase_sector(unsigned int sector_no) {
+	{
+		uint8_t data[1] = { SPIFLASH_WRITE_ENABLE };
+		spiflash_txrx(data, sizeof(data));
+	}
+	{
+		const unsigned int address = sector_no * SPIFLASH_SECTOR_SIZE;
+		uint8_t data[4] = { SPIFLASH_SECTOR_ERASE, (address >> 16) & 0xff, (address >> 8) & 0xff, (address >> 0) & 0xff };
+		spiflash_txrx(data, sizeof(data));
+		spiflash_wait_finished();
+	}
 }
 
 void spiflash_reset(void) {
@@ -132,9 +197,28 @@ void spiflash_read(uint32_t start_address, void *buffer, unsigned int length) {
 	w25qxx_cs_set_inactive();
 }
 
-void spiflash_selfcheck(void) {
+void spiflash_write_page(unsigned int page_no, const void *page_content) {
+	{
+		uint8_t data[1] = { SPIFLASH_WRITE_ENABLE };
+		spiflash_txrx(data, sizeof(data));
+	}
+	{
+		const unsigned int address = page_no * SPIFLASH_PAGE_SIZE;
+		uint8_t data[4 + SPIFLASH_PAGE_SIZE] = { SPIFLASH_PAGE_PROGRAM, (address >> 16) & 0xff, (address >> 8) & 0xff, (address >> 0) & 0xff };
+		memcpy(data + 4, page_content, SPIFLASH_PAGE_SIZE);
+		spiflash_txrx(data, sizeof(data));
+		spiflash_wait_finished();
+	}
+}
+
+struct spiflash_manufacturer_t spiflash_identify(void) {
 	struct spiflash_manufacturer_t id = spiflash_read_id();
 	printf("SPI flash self-test: manufacturer ID 0x%x (%s), device ID 0x%x (%s)\n", id.manufacturer_id, (id.manufacturer_id == 0xef) ? "Winbond Serial Flash" : "?", id.device_id, (id.device_id == 0x16) ? "W25Q64FV" : "?");
+	return id;
+}
+
+void spiflash_selfcheck(void) {
+	struct spiflash_manufacturer_t id = spiflash_identify();
 	if ((id.manufacturer_id == 0xef) && (id.device_id == 0x16)) {
 		const unsigned int capacity_mbit = 64;
 		const unsigned int capacity_bytes = capacity_mbit * 1024 * 1024 / 8;

@@ -2,7 +2,7 @@
 
 include Makefile.toolchain
 
-PROJECT_NAME := bobbycar
+PROJECT_NAME := defiant
 TARGETS := $(PROJECT_NAME) $(PROJECT_NAME).bin
 
 CFLAGS += -include stdperiph/configuration.h -Istdperiph/include -Istdperiph/system -Istdperiph/cmsis

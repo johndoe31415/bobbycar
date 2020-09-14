@@ -181,7 +181,7 @@ static void init_pwm_update_timer(void) {
 		.TIM_CounterMode = TIM_CounterMode_Up,
 	});
 	TIM_ARRPreloadConfig(TIM2, ENABLE);
-	TIM_ITConfig(TIM2, TIM_IT_CC1, ENABLE);
+	TIM_ITConfig(TIM2, TIM_IT_CC1, DISABLE);
 	TIM_Cmd(TIM2, ENABLE);
 }
 

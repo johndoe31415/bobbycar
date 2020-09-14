@@ -34,12 +34,13 @@ from FriendlyArgumentParser import FriendlyArgumentParser
 CommandIdentify = collections.namedtuple("CommandIdentify", [ "name" ])
 CommandReadPage = collections.namedtuple("CommandReadPage", [ "name", "page_begin", "page_end" ])
 CommandWritePages = collections.namedtuple("CommandWritePages", [ "name", "page_begin", "pages" ])
+CommandReset = collections.namedtuple("CommandReset", [ "name" ])
 def _command(text):
 	split_text = text.split(":")
 	cmdname = split_text[0].lower()
 	if cmdname == "identify":
 		return CommandIdentify(name = cmdname)
-	elif cmdname == "readpage":
+	elif cmdname == "readpages":
 		page_begin = int(split_text[1])
 		if len(split_text) > 2:
 			page_end = int(split_text[2])
@@ -69,9 +70,13 @@ class CommandCode(enum.IntEnum):
 	ReadPage = 2
 	EraseSector = 3
 	WritePage = 4
+	Reset = 5
 	Error = 0xdeadbeef
 
 class Communicator():
+	_SECTOR_SIZE = 4096
+	_PAGE_SIZE = 256
+
 	Frame = collections.namedtuple("Frame", [ "cmd_code", "payload" ])
 	def __init__(self, args):
 		self._args = args
@@ -126,13 +131,19 @@ class Communicator():
 	def identify(self):
 		return self._send(CommandCode.Identify)
 
+	def reset(self):
+		return self._send(CommandCode.Reset)
+
 	def read_page(self, page_no):
 		return self._send(CommandCode.ReadPage, struct.pack("<L", page_no))
 
+	def is_page_empty(self, page_no):
+		return set(self.read_page(page_no)) == set([ 0xff ])
+
 	def write_page(self, page_no, page_data):
-		if len(page_data) < 256:
-			page_data = page_data + bytes([ 0xff ] * (256 - len(page_data)))
-		return self._send(CommandCode.WritePage, struct.pack("<L 256s", page_no, page_data), timeout = 30)
+		if len(page_data) < self._PAGE_SIZE:
+			page_data = page_data + bytes([ 0xff ] * (self._PAGE_SIZE - len(page_data)))
+		return self._send(CommandCode.WritePage, struct.pack("<L " + str(self._PAGE_SIZE) + "s", page_no, page_data), timeout = 30)
 
 	def erase_sector(self, sector_no):
 		if self._args.verbose >= 1:
@@ -141,17 +152,45 @@ class Communicator():
 
 	def execute(self, command):
 		if command.name == "identify":
-			print(self.identify())
-		elif command.name == "readpage":
+			rsp = self.identify()
+			if (rsp is not None) and (rsp.cmd_code == CommandCode.Identify):
+				print("Successfully identified device.")
+			else:
+				print("Could not identify device. Response: %s" % (rsp))
+		elif command.name == "readpages":
 			for page_no in range(command.page_begin, command.page_end + 1):
 				rsp = self.read_page(page_no)
 				print(rsp)
 		elif command.name == "writepages":
-			print("Writing %d pages." % (len(command.pages)))
+			t0 = time.time()
+			print("Writing %d pages starting with page #%d." % (len(command.pages), command.page_begin))
+			pages_written = 0
+			flash_errors = 0
 			for (page_no, page_data) in enumerate(command.pages, command.page_begin):
 				if (page_no % 16) == 0:
-					self.erase_sector(page_no // 16)
-				self.write_page(page_no, page_data)
+					sector_no = page_no // 16
+					print("Erasing sector #%d" % (sector_no))
+					self.erase_sector(sector_no)
+
+				for try_no in range(2):
+					self.write_page(page_no, page_data)
+					pages_written += 1
+					print("%.1f%%: %d of %d pages written." % (pages_written / len(command.pages) * 100, pages_written, len(command.pages)))
+
+					readback = self.read_page(page_no)
+					if readback.payload == page_data:
+						break
+
+					print("Readback of page #%d incorrect, retrying flashing page." % (page_no))
+					flash_errors += 1
+				else:
+					raise Exception("Maximum number of tries exceeded, unable to flash page #%d." % (page_no))
+
+			t1 = time.time()
+			print("Write complete after %.1f seconds, %d re-flashes." % (t1 - t0, flash_errors))
+		elif command.name == "reset":
+			self.reset()
+
 
 comm = Communicator(args)
 for command in args.command:

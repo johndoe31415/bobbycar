@@ -21,12 +21,21 @@
  *	Johannes Bauer <JohannesBauer@gmx.de>
 **/
 
+#include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <stm32f10x_tim.h>
 #include "audio.h"
 #include "winbond25q64.h"
 
 #define AUDIO_BUFFER_SIZE 		256
+#define MAX_FILE_COUNT			8
+
+struct audio_toc_entry_t {
+	unsigned int begin_disk_offset;
+	unsigned int file_length;
+	uint8_t filename[56];
+} __attribute__ ((packed));
 
 struct active_audio_file_t {
 	unsigned int playback_offset;
@@ -44,7 +53,7 @@ struct audio_buffer_t {
 static struct active_audio_file_t audio_file = {
 	.playback_offset = 0,
 	.begin_disk_offset = 0,
-	.file_length = 	64563,
+	.file_length = 	0,
 };
 
 enum filling_action_t {
@@ -55,20 +64,37 @@ enum filling_action_t {
 static struct audio_buffer_t buffers[2];
 static unsigned int buffer_index = 0;
 static enum filling_action_t filling_action = IDLE;
+static struct {
+	unsigned int begin_disk_offset;
+	unsigned int file_length;
+} present_files[MAX_FILE_COUNT];
+
+void TIM2_Handler(void) {
+	if (TIM_GetITStatus(TIM2, TIM_IT_CC1) != RESET)   {
+		TIM1->CCR1 = audio_next_sample();
+		TIM_ClearITPendingBit(TIM2, TIM_IT_CC1);
+	}
+}
 
 static void switch_buffers(void) {
 	buffer_index = 1 - buffer_index;
 }
-/*
-static void fire_fill_dma_buffer(struct audio_buffer_t *buffer, unsigned int disk_offset, unsigned int sample_count) {
-}*/
 
-void audio_file_new(unsigned int disk_offset, unsigned int file_length) {
+void audio_playback(unsigned int disk_offset, unsigned int file_length) {
 	struct audio_buffer_t *next_buffer = &buffers[1 - buffer_index];
 	next_buffer->valid = false;
 	audio_file.playback_offset = 0;
 	audio_file.begin_disk_offset = disk_offset;
 	audio_file.file_length = file_length;
+	TIM_ITConfig(TIM2, TIM_IT_CC1, ENABLE);
+}
+
+void audio_playback_fileno(unsigned int fileno) {
+	if ((fileno > MAX_FILE_COUNT) || (present_files[fileno].begin_disk_offset == 0xffffffff)) {
+		audio_shutoff();
+	} else {
+		audio_playback(present_files[fileno].begin_disk_offset, present_files[fileno].file_length);
+	}
 }
 
 static void audio_check_buffers(void) {
@@ -143,5 +169,22 @@ uint8_t audio_next_sample(void) {
 	return returned_sample;
 }
 
-void audio_playback(void) {
+void audio_shutoff(void) {
+	/* Disable audio "next_sample" IRQ and set output to 0 */
+	TIM_ITConfig(TIM2, TIM_IT_CC1, DISABLE);
+	TIM1->CCR1 = 0;
+}
+
+void audio_init(void) {
+	/* Read audio TOC */
+	for (unsigned int i = 0; i < MAX_FILE_COUNT; i++) {
+		const unsigned int offset = sizeof(struct audio_toc_entry_t) * i;
+		struct audio_toc_entry_t entry;
+		spiflash_read(offset, &entry, sizeof(entry));
+		present_files[i].begin_disk_offset = entry.begin_disk_offset;
+		present_files[i].file_length = entry.file_length;
+		if (entry.begin_disk_offset != 0xffffffff) {
+			printf("File %d: \"%s\", offset 0x%x, length %d\n", i, entry.filename, entry.begin_disk_offset, entry.file_length);
+		}
+	}
 }

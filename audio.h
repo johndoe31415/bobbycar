@@ -25,9 +25,12 @@
 #define __AUDIO_H__
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
-void audio_file_new(unsigned int disk_offset, unsigned int file_length);
+void TIM2_Handler(void);
+void audio_playback(unsigned int disk_offset, unsigned int file_length);
+void audio_playback_fileno(unsigned int fileno);
 uint8_t audio_next_sample(void);
-void audio_playback(void);
+void audio_shutoff(void);
+void audio_init(void);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif

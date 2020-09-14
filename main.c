@@ -36,15 +36,9 @@ void SysTick_Handler(void) {
 	usart_terminal_tick();
 }
 
-void TIM2_Handler(void) {
-	if (TIM_GetITStatus(TIM2, TIM_IT_CC1) != RESET)   {
-		TIM1->CCR1 = audio_next_sample();
-		TIM_ClearITPendingBit(TIM2, TIM_IT_CC1);
-	}
-}
-
 int main(void) {
 	printf("Device startup complete.\n");
+	audio_init();
 	//spiflash_reset();
 #if 0
 	while (true);

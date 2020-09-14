@@ -1,0 +1,48 @@
+#!/usr/bin/python3
+#
+#	bobbycar - Modded Bobby Car toy for toddlers
+#	Copyright (C) 2020-2020 Johannes Bauer
+#
+#	This file is part of bobbycar.
+#
+#	bobbycar is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	bobbycar is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with bobbycar; if not, write to the Free Software
+#	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import sys
+from MultiCommand import MultiCommand
+from Commands import ExtractAudioCommand, CompileAudioImageCommand, DecompileAudioImageCommand
+
+mc = MultiCommand()
+
+def genparser(parser):
+	parser.add_argument("--verbose", action = "count", default = 0, help = "Increase verbosity during the importing process.")
+	parser.add_argument("input_file", help = "Input audio or video file of which to rip the audio stream.")
+	parser.add_argument("output_file", help = "Output WAV file.")
+mc.register("extract", "Extract WAV audio from a video", genparser, action = ExtractAudioCommand)
+
+def genparser(parser):
+	parser.add_argument("--verbose", action = "count", default = 0, help = "Increase verbosity during the importing process.")
+	parser.add_argument("input_dir", help = "Input directory with WAV files which should be compiled down.")
+	parser.add_argument("output_file", help = "Output image file.")
+mc.register("compile", "Compile an audio image for the project", genparser, action = CompileAudioImageCommand)
+
+def genparser(parser):
+	parser.add_argument("--verbose", action = "count", default = 0, help = "Increase verbosity during the importing process.")
+	parser.add_argument("input_file", help = "Input image file.")
+	parser.add_argument("output_dir", help = "Output directory.")
+mc.register("decompile", "Decompile an audio image for debugging purposes", genparser, action = DecompileAudioImageCommand)
+
+mc.run(sys.argv[1:])

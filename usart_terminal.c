@@ -30,6 +30,7 @@
 #include "usart_terminal.h"
 #include "winbond25q64.h"
 #include "crc32.h"
+#include "audio.h"
 
 #define CHAR_BACKSPACE				0x7f
 #define TERMINAL_BUFFER_SIZE		384
@@ -44,6 +45,7 @@ enum commandcodes_t {
 	CMDCODE_READ_PAGE = 2,
 	CMDCODE_ERASE_SECTOR = 3,
 	CMDCODE_WRITE_PAGE = 4,
+	CMDCODE_REBOOT = 5,
 	CMDCODE_ERROR = 0xdeadbeef,
 };
 
@@ -75,6 +77,10 @@ static struct terminal_options_t {
 	uint32_t ticks;
 	enum protocol_t protocol;
 } terminal;
+
+static void device_reset(void) {
+	SCB->AIRCR = (0x5fa << SCB_AIRCR_VECTKEY_Pos) | SCB_AIRCR_SYSRESETREQ;
+}
 
 static void create_prompt(void) {
 	if (terminal.protocol == ASCII) {
@@ -127,6 +133,9 @@ static void clear_command(void) {
 		printf("flash-id               Identify the flash ROM.\n");
 		printf("flash-read (offset)    Read bytes from the flash ROM.\n");
 		printf("binary                 Switch to binary protocol.\n");
+		printf("play (no)              Playback sample #n\n");
+		printf("stop                   Stop audio playback\n");
+		printf("reset                  Reset the device.\n");
 	} else if (!strcmp((char*)terminal.input_buffer, "dma")) {
 		debug_dma();
 	} else if (!strcmp((char*)terminal.input_buffer, "spi")) {
@@ -142,10 +151,18 @@ static void clear_command(void) {
 			printf("%02x", buffer[i]);
 		}
 		printf("\n");
+	} else if (!strcmp((char*)terminal.input_buffer, "reset")) {
+		device_reset();
+	} else if (!strncmp((char*)terminal.input_buffer, "play ", 5)) {
+		const unsigned int fileno = atoi((char*)terminal.input_buffer + 5);
+		audio_playback_fileno(fileno);
+	} else if (!strcmp((char*)terminal.input_buffer, "stop")) {
+		audio_shutoff();
 	} else if (!strcmp((char*)terminal.input_buffer, "binary")) {
 		printf("Now switching to binary protocol.\n");
 		terminal.fill = 0;
 		terminal.protocol = BINARY;
+		audio_shutoff();
 	} else {
 		printf("Unknown command: %s\n", (char*)terminal.input_buffer);
 	}
@@ -187,6 +204,8 @@ static void execute_binary_command(struct binary_command_t *command) {
 		const struct binary_payload_erase_sector_t *payload = (const struct binary_payload_erase_sector_t*)command->payload.data;
 		spiflash_erase_sector(payload->sector_no);
 		binary_reply(command->payload.command_code, NULL, 0);
+	} else if (command->payload.command_code == CMDCODE_REBOOT) {
+		device_reset();
 	} else {
 		binary_reply(CMDCODE_ERROR, NULL, 0);
 	}

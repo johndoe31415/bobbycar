@@ -3,7 +3,7 @@ This is the firmware for the modification to a learn-to-walk toy car, a [BIG
 Bobby Car](https://www.big.de/en/products/big-bobby-car/), which I have built.
 It's a toy for my toddler daughter. Using this modification, the car gets an
 engine sound (including startup, idle and shutoff), headlights, turn signals
-and an emergency siren (Martinshorn, the German emergency sound).
+and a siren (Martinshorn, the German police/ambulance/fire engine siren).
 
 ## Hardware and Software
 I'm running this on a custom development board I designed on an STM32F103C8

@@ -29,6 +29,7 @@
 #include "system.h"
 #include "winbond25q64.h"
 #include "init.h"
+#include "stats.h"
 
 static volatile enum dma_state_t dma_state;
 
@@ -61,6 +62,7 @@ static void spiflash_txrx(void *vdata, unsigned int length) {
 
 void SPI1_Handler(void) {
 	/* SPI1 OVR -> Error; abort DMA */
+	stats_failed_dma();
 
 	DMA_Channel_TypeDef *dma_channel_rx = DMA1_Channel2;
 	DMA_Channel_TypeDef *dma_channel_tx = DMA1_Channel3;
@@ -100,6 +102,7 @@ void DMA1_Channel3_Handler(void) {
 
 void spiflash_txrx_dma(void *vdata, unsigned int length) {
 	dma_state = DMA_IN_PROGRESS;
+	stats_new_dma();
 
 	w25qxx_cs_set_active();
 	DMA_Channel_TypeDef *dma_channel_tx = DMA1_Channel3;

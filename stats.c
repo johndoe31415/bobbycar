@@ -21,19 +21,15 @@
  *	Johannes Bauer <JohannesBauer@gmx.de>
 **/
 
-#ifndef __AUDIO_H__
-#define __AUDIO_H__
+#include "stats.h"
 
-#include <stdbool.h>
+static struct stats_t stats_rw;
+const struct stats_t *stats = &stats_rw;
 
-/*************** AUTO GENERATED SECTION FOLLOWS ***************/
-void TIM2_Handler(void);
-void audio_playback(unsigned int disk_offset, unsigned int file_length, bool discard_nextbuffer);
-void audio_set_trigger_point(int new_trigger_point);
-void audio_playback_fileno(unsigned int fileno, bool discard_nextbuffer);
-uint8_t audio_next_sample(void);
-void audio_shutoff(void);
-void audio_init(void);
-/***************  AUTO GENERATED SECTION ENDS   ***************/
+void stats_new_dma(void) {
+	stats_rw.dma_requests_total++;
+}
 
-#endif
+void stats_failed_dma(void) {
+	stats_rw.dma_requests_failed++;
+}

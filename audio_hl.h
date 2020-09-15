@@ -21,19 +21,20 @@
  *	Johannes Bauer <JohannesBauer@gmx.de>
 **/
 
-#ifndef __AUDIO_H__
-#define __AUDIO_H__
+#ifndef __AUDIO_HL_H__
+#define __AUDIO_HL_H__
 
 #include <stdbool.h>
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
-void TIM2_Handler(void);
-void audio_playback(unsigned int disk_offset, unsigned int file_length, bool discard_nextbuffer);
-void audio_set_trigger_point(int new_trigger_point);
-void audio_playback_fileno(unsigned int fileno, bool discard_nextbuffer);
-uint8_t audio_next_sample(void);
-void audio_shutoff(void);
-void audio_init(void);
+void audio_trigger_end_of_sample(void);
+void audio_trigger_point(void);
+void audio_hl_start_engine(void);
+void audio_hl_stop_engine(void);
+void audio_hl_turn_signal_on(void);
+void audio_hl_turn_signal_off(void);
+void audio_hl_siren_on(void);
+void audio_hl_siren_off(void);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif

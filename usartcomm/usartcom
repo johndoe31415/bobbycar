@@ -40,6 +40,8 @@ def _command(text):
 	cmdname = split_text[0].lower()
 	if cmdname == "identify":
 		return CommandIdentify(name = cmdname)
+	elif cmdname == "reset":
+		return CommandReset(name = cmdname)
 	elif cmdname == "readpages":
 		page_begin = int(split_text[1])
 		if len(split_text) > 2:
@@ -111,7 +113,13 @@ class Communicator():
 		rx_buffer = bytearray()
 		frame = None
 		while True:
-			rx_buffer += self._dev.read(1024)
+			if len(rx_buffer) == 0:
+				rx_buffer += self._dev.read(4)
+			if len(rx_buffer) == 4:
+				(expected_length, ) = struct.unpack("<L", rx_buffer)
+				rx_buffer += self._dev.read(expected_length - 4)
+			else:
+				rx_buffer += self._dev.read(1024)
 			frame = self._decode_frame(rx_buffer)
 			if frame is not None:
 				break

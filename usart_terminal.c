@@ -31,6 +31,8 @@
 #include "winbond25q64.h"
 #include "crc32.h"
 #include "audio.h"
+#include "audio_hl.h"
+#include "stats.h"
 
 #define CHAR_BACKSPACE				0x7f
 #define TERMINAL_BUFFER_SIZE		384
@@ -128,6 +130,7 @@ static void clear_command(void) {
 	if (!strcmp((char*)terminal.input_buffer, "?") || !strcmp((char*)terminal.input_buffer, "help")) {
 		printf("Help page:\n");
 		printf("? or help              This help page.\n");
+		printf("stats                  Show some statistical data.\n");
 		printf("dma                    DMA debugging.\n");
 		printf("spi                    SPI debugging.\n");
 		printf("flash-id               Identify the flash ROM.\n");
@@ -135,7 +138,16 @@ static void clear_command(void) {
 		printf("binary                 Switch to binary protocol.\n");
 		printf("play (no)              Playback sample #n\n");
 		printf("stop                   Stop audio playback\n");
+		printf("eng-start              Start the engine\n");
+		printf("eng-stop               Stop the engine\n");
+		printf("turn-on                Activate the turn signal\n");
+		printf("turn-off               Deactivate the turn signal\n");
+		printf("siren-on               Activate the siren\n");
+		printf("siren-off              Deactivate the siren\n");
 		printf("reset                  Reset the device.\n");
+	} else if (!strcmp((char*)terminal.input_buffer, "stats")) {
+		printf("DMA requests total : %u\n", stats->dma_requests_total);
+		printf("DMA requests failed: %u\n", stats->dma_requests_failed);
 	} else if (!strcmp((char*)terminal.input_buffer, "dma")) {
 		debug_dma();
 	} else if (!strcmp((char*)terminal.input_buffer, "spi")) {
@@ -155,9 +167,21 @@ static void clear_command(void) {
 		device_reset();
 	} else if (!strncmp((char*)terminal.input_buffer, "play ", 5)) {
 		const unsigned int fileno = atoi((char*)terminal.input_buffer + 5);
-		audio_playback_fileno(fileno);
+		audio_playback_fileno(fileno, true);
 	} else if (!strcmp((char*)terminal.input_buffer, "stop")) {
 		audio_shutoff();
+	} else if (!strcmp((char*)terminal.input_buffer, "eng-start")) {
+		audio_hl_start_engine();
+	} else if (!strcmp((char*)terminal.input_buffer, "eng-stop")) {
+		audio_hl_stop_engine();
+	} else if (!strcmp((char*)terminal.input_buffer, "turn-on")) {
+		audio_hl_turn_signal_on();
+	} else if (!strcmp((char*)terminal.input_buffer, "turn-off")) {
+		audio_hl_turn_signal_off();
+	} else if (!strcmp((char*)terminal.input_buffer, "siren-on")) {
+		audio_hl_siren_on();
+	} else if (!strcmp((char*)terminal.input_buffer, "siren-off")) {
+		audio_hl_siren_off();
 	} else if (!strcmp((char*)terminal.input_buffer, "binary")) {
 		printf("Now switching to binary protocol.\n");
 		terminal.fill = 0;

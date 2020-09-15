@@ -138,8 +138,8 @@ static void clear_command(void) {
 		printf("binary                 Switch to binary protocol.\n");
 		printf("play (no)              Playback sample #n\n");
 		printf("stop                   Stop audio playback\n");
-		printf("eng-start              Start the engine\n");
-		printf("eng-stop               Stop the engine\n");
+		printf("eng-on                 Start the engine\n");
+		printf("eng-off                Stop the engine\n");
 		printf("turn-on                Activate the turn signal\n");
 		printf("turn-off               Deactivate the turn signal\n");
 		printf("siren-on               Activate the siren\n");
@@ -170,9 +170,9 @@ static void clear_command(void) {
 		audio_playback_fileno(fileno, true);
 	} else if (!strcmp((char*)terminal.input_buffer, "stop")) {
 		audio_shutoff();
-	} else if (!strcmp((char*)terminal.input_buffer, "eng-start")) {
+	} else if (!strcmp((char*)terminal.input_buffer, "eng-on")) {
 		audio_hl_start_engine();
-	} else if (!strcmp((char*)terminal.input_buffer, "eng-stop")) {
+	} else if (!strcmp((char*)terminal.input_buffer, "eng-off")) {
 		audio_hl_stop_engine();
 	} else if (!strcmp((char*)terminal.input_buffer, "turn-on")) {
 		audio_hl_turn_signal_on();

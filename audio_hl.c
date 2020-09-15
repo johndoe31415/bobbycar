@@ -30,9 +30,10 @@ enum audio_fileno_t {
 	FILENO_ENGINE_START = 0,
 	FILENO_ENGINE_IDLE = 1,
 	FILENO_ENGINE_STOP = 2,
-	FILENO_SIREN = 3,
-	FILENO_TURN_SIGNAL_NO_ENGINE = 4,
-	FILENO_TURN_SIGNAL_WITH_ENGINE = 5,
+	FILENO_SIREN_NO_ENGINE = 3,
+	FILENO_SIREN_WITH_ENGINE = 4,
+	FILENO_TURN_SIGNAL_NO_ENGINE = 5,
+	FILENO_TURN_SIGNAL_WITH_ENGINE = 6,
 };
 
 static enum audio_mode_t {
@@ -91,20 +92,21 @@ static void audio_restore_engine(void) {
 void audio_hl_turn_signal_on(void) {
 	audio_mode = TURN_SIGNAL;
 	audio_playback_fileno(engine_running ? FILENO_TURN_SIGNAL_WITH_ENGINE : FILENO_TURN_SIGNAL_NO_ENGINE, true);
+	blinker_state = false;
 	trigger_point_index = 0;
 	audio_set_trigger_point(65 + 4079 * trigger_point_index);
 }
 
 void audio_hl_turn_signal_off(void) {
 	led_orange_set_inactive();
-	blinker_state = true;
+	blinker_state = false;
 	audio_set_trigger_point(-1);
 	audio_restore_engine();
 }
 
 void audio_hl_siren_on(void) {
 	audio_mode = OTHER;
-	audio_playback_fileno(FILENO_SIREN, true);
+	audio_playback_fileno(engine_running ? FILENO_SIREN_WITH_ENGINE : FILENO_SIREN_NO_ENGINE, true);
 }
 
 void audio_hl_siren_off(void) {

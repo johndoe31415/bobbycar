@@ -26,6 +26,7 @@
 .fpu softvfp
 .thumb
 
+/* Output on GPIO pin is inverted (uses 74HC04 as level shifter) */
 .section .text
 .set BRR_OFFSET, 20
 .set BSRR_OFFSET, 16

@@ -25,7 +25,10 @@
 #define __WS2812_DELAY_H__
 
 #include <stdint.h>
+#include <stm32f10x_gpio.h>
 
 void ws2812_delay(uint32_t delay);
+void ws2812_emit_0(GPIO_TypeDef *port, const uint32_t pin_mask);
+void ws2812_emit_1(GPIO_TypeDef *port, const uint32_t pin_mask);
 
 #endif

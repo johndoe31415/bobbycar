@@ -186,22 +186,22 @@
 #define power_set_is_active()			power_set_is_high()
 #define power_set_is_inactive()		power_set_is_low()
 
-// ws2812: PB13, mode = OutputPushPull
+// ws2812: PB13, mode = OutputPushPull, inverted
 #define ws2812_PORT					GPIOB
 #define ws2812_PIN					13
 #define ws2812_MASK					(1 << ws2812_PIN)
 #define ws2812_set_high()			ws2812_PORT->BSRR = ws2812_MASK
 #define ws2812_set_low()			ws2812_PORT->BRR = ws2812_MASK
-#define ws2812_set_active()			ws2812_set_high()
-#define ws2812_set_inactive()		ws2812_set_low()
+#define ws2812_set_active()			ws2812_set_low()
+#define ws2812_set_inactive()		ws2812_set_high()
 #define ws2812_toggle()				ws2812_PORT->ODR ^= ws2812_MASK
 #define ws2812_set_to(value)		if (value) { ws2812_set_active(); } else { ws2812_set_inactive(); }
 #define ws2812_set_logic_to(value)	if (value) { ws2812_set_high(); } else { ws2812_set_low(); }
 #define ws2812_get()				((ws2812_PORT->IDR >> ws2812_PIN) & 1)
 #define ws2812_is_high()			(ws2812_get() != 0)
 #define ws2812_is_low()				(ws2812_get() == 0)
-#define ws2812_is_active()			ws2812_is_high()
-#define ws2812_is_inactive()		ws2812_is_low()
+#define ws2812_is_active()			ws2812_is_low()
+#define ws2812_is_inactive()		ws2812_is_high()
 
 
 void default_fault_handler(void);

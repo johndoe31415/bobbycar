@@ -72,6 +72,7 @@ static void gpio_init(void) {
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
 	w25qxx_cs_set_inactive();
 	power_set_set_inactive();
+	ws2812_set_inactive();
 	GPIO_Init(GPIOA, &(GPIO_InitTypeDef){
 			.GPIO_Pin = GPIO_Pin_5 | GPIO_Pin_7 | GPIO_Pin_9,
 			.GPIO_Mode = GPIO_Mode_AF_PP,

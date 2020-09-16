@@ -27,14 +27,48 @@
 .thumb
 
 .section .text
-.type ws2812_delay, %function
-ws2812_delay:
-	cbz r0, exit_delay
-	subs r0, 1
-	b ws2812_delay
+.set BRR_OFFSET, 20
+.set BSRR_OFFSET, 16
+.set overhead, 4
 
+.type ws2812_emit_0, %function
+ws2812_emit_0:
+	str r1, [r0, #BRR_OFFSET]
 
-	exit_delay:
+	movs  r2, #4					// 350ns
+	0:
+	subs  r2, r2, #1
+	bne   0b
+
+	str r1, [r0, #BSRR_OFFSET]
+
+	movs  r2, #(10 - overhead)		// 800ns
+	1:
+	subs  r2, r2, #1
+	bne   1b
+
 	bx lr
-.size ws2812_delay, .-ws2812_delay
-.global ws2812_delay
+.size ws2812_emit_0, .-ws2812_emit_0
+.global ws2812_emit_0
+
+
+
+.type ws2812_emit_1, %function
+ws2812_emit_1:
+	str r1, [r0, #BRR_OFFSET]
+
+	movs  r2, #8					// 700ns
+	0:
+	subs  r2, r2, #1
+	bne   0b
+
+	str r1, [r0, #BSRR_OFFSET]
+
+	movs  r2, #(7 - overhead)		// 600ns
+	1:
+	subs  r2, r2, #1
+	bne   1b
+
+	bx lr
+.size ws2812_emit_1, .-ws2812_emit_1
+.global ws2812_emit_1

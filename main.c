@@ -30,6 +30,7 @@
 #include "system.h"
 #include "main.h"
 #include "audio.h"
+#include "ws2812.h"
 
 void SysTick_Handler(void) {
 //	led_red_toggle();
@@ -60,11 +61,7 @@ int main(void) {
 	led_green_set_active();
 	power_set_set_active();
 	while (true) {
-		if (power_on_is_active()) {
-			led_red_set_active();
-		} else {
-			led_red_set_inactive();
-		}
+		led_red_set_to(power_on_is_active());
 		/*
 		printf("status: %x\n", spiflash_read_status());
 
@@ -79,7 +76,11 @@ int main(void) {
 			printf("erase done.\n");
 		}
 
-		delay(10000000);
 */
+#if 1
+		uint8_t foo[3] = { 0xff, 0 , 0 };
+		ws2812_sendbits(ws2812_PORT, ws2812_PIN, 1, foo);
+		for (volatile unsigned int i = 0; i < 1000000; i++);
+#endif
 	}
 }

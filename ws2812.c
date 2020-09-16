@@ -24,33 +24,18 @@
 #include "ws2812.h"
 #include "ws2812_delay.h"
 
-/* 1 tick approximately 100ns */
-
-static void ws2812_emit_one(GPIO_TypeDef *port, const uint32_t pin_mask) {
-	port->BRR = pin_mask;
-	ws2812_delay(5);		// 700ns
-	port->BSRR = pin_mask;
-	ws2812_delay(3);		// 600ns
-}
-
-static void ws2812_emit_zero(GPIO_TypeDef *port, const uint32_t pin_mask) {
-	port->BRR = pin_mask;
-	ws2812_delay(1);		// 350ns
-	port->BSRR = pin_mask;
-	ws2812_delay(4);		// 800ns
-}
-
 void ws2812_sendbits(GPIO_TypeDef *port, unsigned int pin_no, unsigned int led_count, const void *led_data) {
 	unsigned int bit_count = led_count * 24;
 	const uint32_t pin_mask = 1 << pin_no;
 
+	__disable_irq();
 	while (bit_count > 0) {
 		uint32_t current_word = *((const uint8_t*)led_data++);
 		for (unsigned int word_bits = 0; word_bits < 8; word_bits++) {
 			if (current_word & 1) {
-				ws2812_emit_one(port, pin_mask);
+				ws2812_emit_1(port, pin_mask);
 			} else {
-				ws2812_emit_zero(port, pin_mask);
+				ws2812_emit_0(port, pin_mask);
 			}
 
 			current_word >>= 1;
@@ -60,4 +45,5 @@ void ws2812_sendbits(GPIO_TypeDef *port, unsigned int pin_no, unsigned int led_c
 			}
 		}
 	}
+	__enable_irq();
 }

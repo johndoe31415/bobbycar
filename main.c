@@ -58,10 +58,10 @@ int main(void) {
 		printf("ID %x %x\n", id.manufacturer_id, id.device_id);
 	}
 #endif
-	led_green_set_active();
-	power_set_set_active();
+	//led_green_set_active();
+	//power_set_set_active();
 	while (true) {
-		led_red_set_to(power_on_is_active());
+		led_red_set_to(power_sense_is_active());
 		/*
 		printf("status: %x\n", spiflash_read_status());
 

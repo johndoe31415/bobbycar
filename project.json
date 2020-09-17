@@ -21,7 +21,15 @@
 
 		"PA8": { "name": "audio_pwm", "mode": "af", "af": "TIM1", "speed": 50 },
 
-		"PA12": { "name": "power_on", "mode": "in" },
-		"PB9": { "name": "power_set", "mode": "out", "initial": "off" }
+		"PA12": { "name": "power_sense", "mode": "in" },
+		"PB9": { "name": "power_keepalive", "mode": "out", "initial": "off" },
+
+		"PB4": { "name": "led_siren", "mode": "out" },
+		"PB5": { "name": "button_siren", "mode": "in-up", "invert": true },
+		"PB6": { "name": "button_left", "mode": "in-up", "invert": true },
+		"PB7": { "name": "button_right", "mode": "in-up", "invert": true },
+		"PB8": { "name": "button_parent", "mode": "in-up", "invert": true },
+
+		"PA0": { "name": "sample_battery", "mode": "analog" }
 	}
 }

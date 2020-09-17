@@ -31,6 +31,16 @@
 
 #include <stm32f10x_gpio.h>
 
+// sample_battery: PA0, mode = Analog
+#define sample_battery_PORT					GPIOA
+#define sample_battery_PIN					0
+#define sample_battery_MASK					(1 << sample_battery_PIN)
+#define sample_battery_get()				((sample_battery_PORT->IDR >> sample_battery_PIN) & 1)
+#define sample_battery_is_high()			(sample_battery_get() != 0)
+#define sample_battery_is_low()				(sample_battery_get() == 0)
+#define sample_battery_is_active()			sample_battery_is_high()
+#define sample_battery_is_inactive()		sample_battery_is_low()
+
 // w25qxx_cs: PA4, mode = OutputPushPull, inverted, alternate function SPI1
 #define w25qxx_cs_PORT					GPIOA
 #define w25qxx_cs_PIN					4
@@ -108,15 +118,15 @@
 #define rs232_rx_is_active()			rs232_rx_is_high()
 #define rs232_rx_is_inactive()		rs232_rx_is_low()
 
-// power_on: PA12, mode = InputFloat
-#define power_on_PORT					GPIOA
-#define power_on_PIN					12
-#define power_on_MASK					(1 << power_on_PIN)
-#define power_on_get()				((power_on_PORT->IDR >> power_on_PIN) & 1)
-#define power_on_is_high()			(power_on_get() != 0)
-#define power_on_is_low()				(power_on_get() == 0)
-#define power_on_is_active()			power_on_is_high()
-#define power_on_is_inactive()		power_on_is_low()
+// power_sense: PA12, mode = InputFloat
+#define power_sense_PORT					GPIOA
+#define power_sense_PIN					12
+#define power_sense_MASK					(1 << power_sense_PIN)
+#define power_sense_get()				((power_sense_PORT->IDR >> power_sense_PIN) & 1)
+#define power_sense_is_high()			(power_sense_get() != 0)
+#define power_sense_is_low()				(power_sense_get() == 0)
+#define power_sense_is_active()			power_sense_is_high()
+#define power_sense_is_inactive()		power_sense_is_low()
 
 // led_red: PB0, mode = OutputPushPull
 #define led_red_PORT					GPIOB
@@ -169,22 +179,79 @@
 #define led_green_is_active()			led_green_is_high()
 #define led_green_is_inactive()		led_green_is_low()
 
-// power_set: PB9, mode = OutputPushPull
-#define power_set_PORT					GPIOB
-#define power_set_PIN					9
-#define power_set_MASK					(1 << power_set_PIN)
-#define power_set_set_high()			power_set_PORT->BSRR = power_set_MASK
-#define power_set_set_low()			power_set_PORT->BRR = power_set_MASK
-#define power_set_set_active()			power_set_set_high()
-#define power_set_set_inactive()		power_set_set_low()
-#define power_set_toggle()				power_set_PORT->ODR ^= power_set_MASK
-#define power_set_set_to(value)		if (value) { power_set_set_active(); } else { power_set_set_inactive(); }
-#define power_set_set_logic_to(value)	if (value) { power_set_set_high(); } else { power_set_set_low(); }
-#define power_set_get()				((power_set_PORT->IDR >> power_set_PIN) & 1)
-#define power_set_is_high()			(power_set_get() != 0)
-#define power_set_is_low()				(power_set_get() == 0)
-#define power_set_is_active()			power_set_is_high()
-#define power_set_is_inactive()		power_set_is_low()
+// led_siren: PB4, mode = OutputPushPull
+#define led_siren_PORT					GPIOB
+#define led_siren_PIN					4
+#define led_siren_MASK					(1 << led_siren_PIN)
+#define led_siren_set_high()			led_siren_PORT->BSRR = led_siren_MASK
+#define led_siren_set_low()			led_siren_PORT->BRR = led_siren_MASK
+#define led_siren_set_active()			led_siren_set_high()
+#define led_siren_set_inactive()		led_siren_set_low()
+#define led_siren_toggle()				led_siren_PORT->ODR ^= led_siren_MASK
+#define led_siren_set_to(value)		if (value) { led_siren_set_active(); } else { led_siren_set_inactive(); }
+#define led_siren_set_logic_to(value)	if (value) { led_siren_set_high(); } else { led_siren_set_low(); }
+#define led_siren_get()				((led_siren_PORT->IDR >> led_siren_PIN) & 1)
+#define led_siren_is_high()			(led_siren_get() != 0)
+#define led_siren_is_low()				(led_siren_get() == 0)
+#define led_siren_is_active()			led_siren_is_high()
+#define led_siren_is_inactive()		led_siren_is_low()
+
+// button_siren: PB5, mode = InputPullup, inverted
+#define button_siren_PORT					GPIOB
+#define button_siren_PIN					5
+#define button_siren_MASK					(1 << button_siren_PIN)
+#define button_siren_get()				((button_siren_PORT->IDR >> button_siren_PIN) & 1)
+#define button_siren_is_high()			(button_siren_get() != 0)
+#define button_siren_is_low()				(button_siren_get() == 0)
+#define button_siren_is_active()			button_siren_is_low()
+#define button_siren_is_inactive()		button_siren_is_high()
+
+// button_left: PB6, mode = InputPullup, inverted
+#define button_left_PORT					GPIOB
+#define button_left_PIN					6
+#define button_left_MASK					(1 << button_left_PIN)
+#define button_left_get()				((button_left_PORT->IDR >> button_left_PIN) & 1)
+#define button_left_is_high()			(button_left_get() != 0)
+#define button_left_is_low()				(button_left_get() == 0)
+#define button_left_is_active()			button_left_is_low()
+#define button_left_is_inactive()		button_left_is_high()
+
+// button_right: PB7, mode = InputPullup, inverted
+#define button_right_PORT					GPIOB
+#define button_right_PIN					7
+#define button_right_MASK					(1 << button_right_PIN)
+#define button_right_get()				((button_right_PORT->IDR >> button_right_PIN) & 1)
+#define button_right_is_high()			(button_right_get() != 0)
+#define button_right_is_low()				(button_right_get() == 0)
+#define button_right_is_active()			button_right_is_low()
+#define button_right_is_inactive()		button_right_is_high()
+
+// button_parent: PB8, mode = InputPullup, inverted
+#define button_parent_PORT					GPIOB
+#define button_parent_PIN					8
+#define button_parent_MASK					(1 << button_parent_PIN)
+#define button_parent_get()				((button_parent_PORT->IDR >> button_parent_PIN) & 1)
+#define button_parent_is_high()			(button_parent_get() != 0)
+#define button_parent_is_low()				(button_parent_get() == 0)
+#define button_parent_is_active()			button_parent_is_low()
+#define button_parent_is_inactive()		button_parent_is_high()
+
+// power_keepalive: PB9, mode = OutputPushPull
+#define power_keepalive_PORT					GPIOB
+#define power_keepalive_PIN					9
+#define power_keepalive_MASK					(1 << power_keepalive_PIN)
+#define power_keepalive_set_high()			power_keepalive_PORT->BSRR = power_keepalive_MASK
+#define power_keepalive_set_low()			power_keepalive_PORT->BRR = power_keepalive_MASK
+#define power_keepalive_set_active()			power_keepalive_set_high()
+#define power_keepalive_set_inactive()		power_keepalive_set_low()
+#define power_keepalive_toggle()				power_keepalive_PORT->ODR ^= power_keepalive_MASK
+#define power_keepalive_set_to(value)		if (value) { power_keepalive_set_active(); } else { power_keepalive_set_inactive(); }
+#define power_keepalive_set_logic_to(value)	if (value) { power_keepalive_set_high(); } else { power_keepalive_set_low(); }
+#define power_keepalive_get()				((power_keepalive_PORT->IDR >> power_keepalive_PIN) & 1)
+#define power_keepalive_is_high()			(power_keepalive_get() != 0)
+#define power_keepalive_is_low()				(power_keepalive_get() == 0)
+#define power_keepalive_is_active()			power_keepalive_is_high()
+#define power_keepalive_is_inactive()		power_keepalive_is_low()
 
 // ws2812: PB13, mode = OutputPushPull, inverted
 #define ws2812_PORT					GPIOB

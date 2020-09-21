@@ -25,6 +25,7 @@
 #include <stdbool.h>
 #include <stm32f10x_tim.h>
 #include <stm32f10x_usart.h>
+#include <stm32f10x_adc.h>
 
 #include "usart_terminal.h"
 #include "system.h"
@@ -35,6 +36,25 @@
 void SysTick_Handler(void) {
 //	led_red_toggle();
 	usart_terminal_tick();
+}
+
+uint32_t adc_getvalue(void) {
+	ADC_ClearFlag(ADC1, ADC_FLAG_EOC);
+	ADC_SoftwareStartConvCmd(ADC1, ENABLE);
+	while (ADC_GetFlagStatus(ADC1, ADC_FLAG_EOC) == RESET);
+	return ADC_GetConversionValue(ADC1);
+}
+
+uint32_t adc_getavgsamples(unsigned int count) {
+	uint32_t sum = count / 2;
+	for (unsigned int i = 0; i < count; i++) {
+		sum += adc_getvalue();
+	}
+	return sum / count;
+}
+
+uint32_t adu_to_millivolts(uint32_t adu) {
+	return adu * 5000 / 1493;
 }
 
 int main(void) {
@@ -82,5 +102,7 @@ int main(void) {
 		ws2812_sendbits(ws2812_PORT, ws2812_PIN, 1, foo);
 		for (volatile unsigned int i = 0; i < 1000000; i++);
 #endif
+
+		printf("%ld\n", adu_to_millivolts(adc_getavgsamples(128)));
 	}
 }

@@ -26,6 +26,7 @@
 #include <stm32f10x_spi.h>
 #include <stm32f10x_dma.h>
 #include <stm32f10x_tim.h>
+#include <stm32f10x_adc.h>
 #include <stm32f10x.h>
 #include <misc.h>
 #include "system.h"
@@ -185,6 +186,27 @@ static void init_pwm_update_timer(void) {
 	TIM_Cmd(TIM2, ENABLE);
 }
 
+static void init_adc(void) {
+	RCC_ADCCLKConfig(RCC_PCLK2_Div8);
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
+	ADC_Init(ADC1, &(ADC_InitTypeDef) {
+		.ADC_Mode = ADC_Mode_Independent,
+		.ADC_ScanConvMode = DISABLE,
+		.ADC_ContinuousConvMode = DISABLE,
+		.ADC_ExternalTrigConv = ADC_ExternalTrigConv_None,
+		.ADC_DataAlign = ADC_DataAlign_Right,
+		.ADC_NbrOfChannel = 1,
+	});
+	ADC_TempSensorVrefintCmd(ENABLE);
+	//ADC_RegularChannelConfig(ADC1, ADC_Channel_0, 1, ADC_SampleTime_239Cycles5);
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_0, 1, ADC_SampleTime_71Cycles5);
+	//ADC_RegularChannelConfig(ADC1, ADC_Channel_Vrefint, 1, ADC_SampleTime_71Cycles5);
+	ADC_Cmd(ADC1, ENABLE);
+
+	ADC_ResetCalibration(ADC1);
+	while (ADC_GetCalibrationStatus(ADC1));
+}
+
 static void init_systick(void) {
 	//SysTick_Config(72000000 / 100);	/* 10ms per systick */
 	SysTick_Config(72000000 / 10);		/* 100ms per systick */
@@ -196,6 +218,7 @@ void system_init(void) {
 	init_spi();
 	init_pwm();
 	init_pwm_update_timer();
+	init_adc();
 	init_nvic();
 	init_systick();
 }

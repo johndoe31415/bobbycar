@@ -36,6 +36,7 @@
 
 #define CHAR_BACKSPACE				0x7f
 #define TERMINAL_BUFFER_SIZE		384
+#define TERMINAL_TICK_THRESHOLD		30		/* tick every 10ms, clear buffer after 30 * 10ms = 300ms */
 
 enum protocol_t {
 	ASCII = 0,
@@ -281,7 +282,7 @@ void usart_terminal_rx(char character) {
 
 void usart_terminal_tick(void) {
 	terminal.ticks++;
-	if ((terminal.ticks >= 3) && (terminal.protocol == BINARY)) {
+	if ((terminal.ticks >= TERMINAL_TICK_THRESHOLD) && (terminal.protocol == BINARY)) {
 		terminal.fill = 0;
 		terminal.ticks = 0;
 	}

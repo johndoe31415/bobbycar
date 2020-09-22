@@ -60,7 +60,6 @@ void audio_trigger_end_of_sample(void) {
 
 void audio_trigger_point(void) {
 	blinker_state = !blinker_state;
-	led_orange_set_to(blinker_state);
 	trigger_point_index = trigger_point_index + 1;
 	if (trigger_point_index >= 12) {
 		trigger_point_index = 0;
@@ -98,7 +97,6 @@ void audio_hl_turn_signal_on(void) {
 }
 
 void audio_hl_turn_signal_off(void) {
-	led_orange_set_inactive();
 	blinker_state = false;
 	audio_set_trigger_point(-1);
 	audio_restore_engine();

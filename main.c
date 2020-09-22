@@ -25,84 +25,67 @@
 #include <stdbool.h>
 #include <stm32f10x_tim.h>
 #include <stm32f10x_usart.h>
-#include <stm32f10x_adc.h>
 
 #include "usart_terminal.h"
 #include "system.h"
 #include "main.h"
 #include "audio.h"
 #include "ws2812.h"
+#include "adc.h"
+
+struct uistate_t {
+	unsigned int undervoltage_counter;
+};
+
+volatile unsigned int timectr = 0;
+
+static void wait_systick(void) {
+	unsigned int old_timectr = timectr;
+	while (old_timectr == timectr);
+}
 
 void SysTick_Handler(void) {
-//	led_red_toggle();
+	timectr++;
 	usart_terminal_tick();
 }
 
-uint32_t adc_getvalue(void) {
-	ADC_ClearFlag(ADC1, ADC_FLAG_EOC);
-	ADC_SoftwareStartConvCmd(ADC1, ENABLE);
-	while (ADC_GetFlagStatus(ADC1, ADC_FLAG_EOC) == RESET);
-	return ADC_GetConversionValue(ADC1);
-}
-
-uint32_t adc_getavgsamples(unsigned int count) {
-	uint32_t sum = count / 2;
-	for (unsigned int i = 0; i < count; i++) {
-		sum += adc_getvalue();
+static void enter_error_mode(unsigned int error_code) {
+	printf("%u: error code %u\n", timectr, error_code);
+	led_red_set_active();
+	led_green_set_to(error_code & 1);
+	led_orange_set_to(error_code & 2);
+	led_siren_set_inactive();
+	audio_shutoff();
+	while (true) {
+		__WFI();
 	}
-	return sum / count;
-}
-
-uint32_t adu_to_millivolts(uint32_t adu) {
-	return adu * 5000 / 1493;
 }
 
 int main(void) {
-	printf("Device startup complete.\n");
+	led_green_set_active();
+	power_keepalive_set_active();
+	printf("Device cold start complete.\n");
+	while (timectr < 125);		/* Wait 250 ms before flash settles */
 	audio_init();
-	//spiflash_reset();
-#if 0
-	while (true);
-	//spiflash_selfcheck();
+
+	struct uistate_t state = { 0 };
 	while (true) {
-		led_green_toggle();
-		delay(1000000);
+		wait_systick();
 
-		led_orange_toggle();
-		delay(1000000);
-
-		led_red_toggle();
-		delay(1000000);
-
-		struct spiflash_manufacturer_t id = spiflash_read_id_dma();
-		printf("ID %x %x\n", id.manufacturer_id, id.device_id);
-	}
-#endif
-	//led_green_set_active();
-	//power_set_set_active();
-	while (true) {
-		led_red_set_to(power_sense_is_active());
-		/*
-		printf("status: %x\n", spiflash_read_status());
-
-		uint8_t data[80];
-		spiflash_read(0, data, sizeof(data));
-		for (int i = 0; i < sizeof(data); i++) printf("%02x", data[i]);
-		printf("\n");
-
-		if (data[1] == 0) {
-			printf("erasing...\n");
-			spiflash_erase_sector(0);
-			printf("erase done.\n");
+		uint32_t voltage_millivolts = adc_get_ext_voltage_millivolts();
+		if (voltage_millivolts < 3500 * 3) {
+			state.undervoltage_counter++;
+		} else {
+			state.undervoltage_counter = 0;
+		}
+		if (state.undervoltage_counter >= 100) {
+			/* One second of straight undervoltage, go into error mode. */
+			enter_error_mode(0);
 		}
 
-*/
 #if 1
 		uint8_t foo[3] = { 0xff, 0 , 0 };
 		ws2812_sendbits(ws2812_PORT, ws2812_PIN, 1, foo);
-		for (volatile unsigned int i = 0; i < 1000000; i++);
 #endif
-
-		printf("%ld\n", adu_to_millivolts(adc_getavgsamples(128)));
 	}
 }

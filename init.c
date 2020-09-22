@@ -198,9 +198,6 @@ static void init_adc(void) {
 		.ADC_NbrOfChannel = 1,
 	});
 	ADC_TempSensorVrefintCmd(ENABLE);
-	//ADC_RegularChannelConfig(ADC1, ADC_Channel_0, 1, ADC_SampleTime_239Cycles5);
-	ADC_RegularChannelConfig(ADC1, ADC_Channel_0, 1, ADC_SampleTime_71Cycles5);
-	//ADC_RegularChannelConfig(ADC1, ADC_Channel_Vrefint, 1, ADC_SampleTime_71Cycles5);
 	ADC_Cmd(ADC1, ENABLE);
 
 	ADC_ResetCalibration(ADC1);
@@ -208,8 +205,7 @@ static void init_adc(void) {
 }
 
 static void init_systick(void) {
-	//SysTick_Config(72000000 / 100);	/* 10ms per systick */
-	SysTick_Config(72000000 / 10);		/* 100ms per systick */
+	SysTick_Config(72000000 / 100);	/* 10ms per systick, 100 Hz */
 }
 
 void system_init(void) {

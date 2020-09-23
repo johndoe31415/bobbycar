@@ -70,8 +70,11 @@ static void clock_switch(void) {
 static void gpio_init(void) {
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
+	uln2003_ledleft_set_inactive();
+	uln2003_ledright_set_inactive();
+	uln2003_emergencylights_set_inactive();
 	w25qxx_cs_set_inactive();
-	power_keepalive_set_inactive();
+	pwr_keepalive_set_inactive();
 	ws2812_set_inactive();
 	GPIO_Init(GPIOA, &(GPIO_InitTypeDef){
 			.GPIO_Pin = GPIO_Pin_5 | GPIO_Pin_7 | GPIO_Pin_9,
@@ -94,12 +97,17 @@ static void gpio_init(void) {
 			.GPIO_Speed = GPIO_Speed_2MHz,
 	});
 	GPIO_Init(GPIOA, &(GPIO_InitTypeDef){
-			.GPIO_Pin = GPIO_Pin_4,
+			.GPIO_Pin = GPIO_Pin_11,
+			.GPIO_Mode = GPIO_Mode_IPU,
+			.GPIO_Speed = GPIO_Speed_2MHz,
+	});
+	GPIO_Init(GPIOA, &(GPIO_InitTypeDef){
+			.GPIO_Pin = GPIO_Pin_1 | GPIO_Pin_2 | GPIO_Pin_3 | GPIO_Pin_4,
 			.GPIO_Mode = GPIO_Mode_Out_PP,
 			.GPIO_Speed = GPIO_Speed_2MHz,
 	});
 	GPIO_Init(GPIOB, &(GPIO_InitTypeDef){
-			.GPIO_Pin = GPIO_Pin_5 | GPIO_Pin_6 | GPIO_Pin_7 | GPIO_Pin_8,
+			.GPIO_Pin = GPIO_Pin_5 | GPIO_Pin_6 | GPIO_Pin_7 | GPIO_Pin_8 | GPIO_Pin_10,
 			.GPIO_Mode = GPIO_Mode_IPU,
 			.GPIO_Speed = GPIO_Speed_2MHz,
 	});

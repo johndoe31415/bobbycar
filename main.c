@@ -53,7 +53,7 @@ static void enter_error_mode(unsigned int error_code) {
 	printf("%u: error code %u\n", timectr, error_code);
 	led_red_set_active();
 	led_green_set_to(error_code & 1);
-	led_orange_set_to(error_code & 2);
+	led_yellow_set_to(error_code & 2);
 	led_siren_set_inactive();
 	audio_shutoff();
 	while (true) {
@@ -63,7 +63,7 @@ static void enter_error_mode(unsigned int error_code) {
 
 int main(void) {
 	led_green_set_active();
-	power_keepalive_set_active();
+	pwr_keepalive_set_active();
 	printf("Device cold start complete.\n");
 	while (timectr < 125);		/* Wait 250 ms before flash settles */
 	audio_init();

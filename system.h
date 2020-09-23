@@ -31,15 +31,66 @@
 
 #include <stm32f10x_gpio.h>
 
-// sample_battery: PA0, mode = Analog
-#define sample_battery_PORT					GPIOA
-#define sample_battery_PIN					0
-#define sample_battery_MASK					(1 << sample_battery_PIN)
-#define sample_battery_get()				((sample_battery_PORT->IDR >> sample_battery_PIN) & 1)
-#define sample_battery_is_high()			(sample_battery_get() != 0)
-#define sample_battery_is_low()				(sample_battery_get() == 0)
-#define sample_battery_is_active()			sample_battery_is_high()
-#define sample_battery_is_inactive()		sample_battery_is_low()
+// battery_sense: PA0, mode = Analog
+#define battery_sense_PORT					GPIOA
+#define battery_sense_PIN					0
+#define battery_sense_MASK					(1 << battery_sense_PIN)
+#define battery_sense_get()				((battery_sense_PORT->IDR >> battery_sense_PIN) & 1)
+#define battery_sense_is_high()			(battery_sense_get() != 0)
+#define battery_sense_is_low()				(battery_sense_get() == 0)
+#define battery_sense_is_active()			battery_sense_is_high()
+#define battery_sense_is_inactive()		battery_sense_is_low()
+
+// uln2003_ledleft: PA1, mode = OutputPushPull
+#define uln2003_ledleft_PORT					GPIOA
+#define uln2003_ledleft_PIN					1
+#define uln2003_ledleft_MASK					(1 << uln2003_ledleft_PIN)
+#define uln2003_ledleft_set_high()			uln2003_ledleft_PORT->BSRR = uln2003_ledleft_MASK
+#define uln2003_ledleft_set_low()			uln2003_ledleft_PORT->BRR = uln2003_ledleft_MASK
+#define uln2003_ledleft_set_active()			uln2003_ledleft_set_high()
+#define uln2003_ledleft_set_inactive()		uln2003_ledleft_set_low()
+#define uln2003_ledleft_toggle()				uln2003_ledleft_PORT->ODR ^= uln2003_ledleft_MASK
+#define uln2003_ledleft_set_to(value)		if (value) { uln2003_ledleft_set_active(); } else { uln2003_ledleft_set_inactive(); }
+#define uln2003_ledleft_set_logic_to(value)	if (value) { uln2003_ledleft_set_high(); } else { uln2003_ledleft_set_low(); }
+#define uln2003_ledleft_get()				((uln2003_ledleft_PORT->IDR >> uln2003_ledleft_PIN) & 1)
+#define uln2003_ledleft_is_high()			(uln2003_ledleft_get() != 0)
+#define uln2003_ledleft_is_low()				(uln2003_ledleft_get() == 0)
+#define uln2003_ledleft_is_active()			uln2003_ledleft_is_high()
+#define uln2003_ledleft_is_inactive()		uln2003_ledleft_is_low()
+
+// uln2003_ledright: PA2, mode = OutputPushPull
+#define uln2003_ledright_PORT					GPIOA
+#define uln2003_ledright_PIN					2
+#define uln2003_ledright_MASK					(1 << uln2003_ledright_PIN)
+#define uln2003_ledright_set_high()			uln2003_ledright_PORT->BSRR = uln2003_ledright_MASK
+#define uln2003_ledright_set_low()			uln2003_ledright_PORT->BRR = uln2003_ledright_MASK
+#define uln2003_ledright_set_active()			uln2003_ledright_set_high()
+#define uln2003_ledright_set_inactive()		uln2003_ledright_set_low()
+#define uln2003_ledright_toggle()				uln2003_ledright_PORT->ODR ^= uln2003_ledright_MASK
+#define uln2003_ledright_set_to(value)		if (value) { uln2003_ledright_set_active(); } else { uln2003_ledright_set_inactive(); }
+#define uln2003_ledright_set_logic_to(value)	if (value) { uln2003_ledright_set_high(); } else { uln2003_ledright_set_low(); }
+#define uln2003_ledright_get()				((uln2003_ledright_PORT->IDR >> uln2003_ledright_PIN) & 1)
+#define uln2003_ledright_is_high()			(uln2003_ledright_get() != 0)
+#define uln2003_ledright_is_low()				(uln2003_ledright_get() == 0)
+#define uln2003_ledright_is_active()			uln2003_ledright_is_high()
+#define uln2003_ledright_is_inactive()		uln2003_ledright_is_low()
+
+// uln2003_emergencylights: PA3, mode = OutputPushPull
+#define uln2003_emergencylights_PORT					GPIOA
+#define uln2003_emergencylights_PIN					3
+#define uln2003_emergencylights_MASK					(1 << uln2003_emergencylights_PIN)
+#define uln2003_emergencylights_set_high()			uln2003_emergencylights_PORT->BSRR = uln2003_emergencylights_MASK
+#define uln2003_emergencylights_set_low()			uln2003_emergencylights_PORT->BRR = uln2003_emergencylights_MASK
+#define uln2003_emergencylights_set_active()			uln2003_emergencylights_set_high()
+#define uln2003_emergencylights_set_inactive()		uln2003_emergencylights_set_low()
+#define uln2003_emergencylights_toggle()				uln2003_emergencylights_PORT->ODR ^= uln2003_emergencylights_MASK
+#define uln2003_emergencylights_set_to(value)		if (value) { uln2003_emergencylights_set_active(); } else { uln2003_emergencylights_set_inactive(); }
+#define uln2003_emergencylights_set_logic_to(value)	if (value) { uln2003_emergencylights_set_high(); } else { uln2003_emergencylights_set_low(); }
+#define uln2003_emergencylights_get()				((uln2003_emergencylights_PORT->IDR >> uln2003_emergencylights_PIN) & 1)
+#define uln2003_emergencylights_is_high()			(uln2003_emergencylights_get() != 0)
+#define uln2003_emergencylights_is_low()				(uln2003_emergencylights_get() == 0)
+#define uln2003_emergencylights_is_active()			uln2003_emergencylights_is_high()
+#define uln2003_emergencylights_is_inactive()		uln2003_emergencylights_is_low()
 
 // w25qxx_cs: PA4, mode = OutputPushPull, inverted, alternate function SPI1
 #define w25qxx_cs_PORT					GPIOA
@@ -98,35 +149,45 @@
 #define audio_pwm_is_active()			audio_pwm_is_high()
 #define audio_pwm_is_inactive()		audio_pwm_is_low()
 
-// rs232_tx: PA9, mode = AlternateFunction, alternate function USART1
-#define rs232_tx_PORT					GPIOA
-#define rs232_tx_PIN					9
-#define rs232_tx_MASK					(1 << rs232_tx_PIN)
-#define rs232_tx_get()				((rs232_tx_PORT->IDR >> rs232_tx_PIN) & 1)
-#define rs232_tx_is_high()			(rs232_tx_get() != 0)
-#define rs232_tx_is_low()				(rs232_tx_get() == 0)
-#define rs232_tx_is_active()			rs232_tx_is_high()
-#define rs232_tx_is_inactive()		rs232_tx_is_low()
+// usart_tx: PA9, mode = AlternateFunction, alternate function USART1
+#define usart_tx_PORT					GPIOA
+#define usart_tx_PIN					9
+#define usart_tx_MASK					(1 << usart_tx_PIN)
+#define usart_tx_get()				((usart_tx_PORT->IDR >> usart_tx_PIN) & 1)
+#define usart_tx_is_high()			(usart_tx_get() != 0)
+#define usart_tx_is_low()				(usart_tx_get() == 0)
+#define usart_tx_is_active()			usart_tx_is_high()
+#define usart_tx_is_inactive()		usart_tx_is_low()
 
-// rs232_rx: PA10, mode = InputFloat, alternate function USART1
-#define rs232_rx_PORT					GPIOA
-#define rs232_rx_PIN					10
-#define rs232_rx_MASK					(1 << rs232_rx_PIN)
-#define rs232_rx_get()				((rs232_rx_PORT->IDR >> rs232_rx_PIN) & 1)
-#define rs232_rx_is_high()			(rs232_rx_get() != 0)
-#define rs232_rx_is_low()				(rs232_rx_get() == 0)
-#define rs232_rx_is_active()			rs232_rx_is_high()
-#define rs232_rx_is_inactive()		rs232_rx_is_low()
+// usart_rx: PA10, mode = InputFloat, alternate function USART1
+#define usart_rx_PORT					GPIOA
+#define usart_rx_PIN					10
+#define usart_rx_MASK					(1 << usart_rx_PIN)
+#define usart_rx_get()				((usart_rx_PORT->IDR >> usart_rx_PIN) & 1)
+#define usart_rx_is_high()			(usart_rx_get() != 0)
+#define usart_rx_is_low()				(usart_rx_get() == 0)
+#define usart_rx_is_active()			usart_rx_is_high()
+#define usart_rx_is_inactive()		usart_rx_is_low()
 
-// power_sense: PA12, mode = InputFloat
-#define power_sense_PORT					GPIOA
-#define power_sense_PIN					12
-#define power_sense_MASK					(1 << power_sense_PIN)
-#define power_sense_get()				((power_sense_PORT->IDR >> power_sense_PIN) & 1)
-#define power_sense_is_high()			(power_sense_get() != 0)
-#define power_sense_is_low()				(power_sense_get() == 0)
-#define power_sense_is_active()			power_sense_is_high()
-#define power_sense_is_inactive()		power_sense_is_low()
+// ignition_crank: PA11, mode = InputPullup
+#define ignition_crank_PORT					GPIOA
+#define ignition_crank_PIN					11
+#define ignition_crank_MASK					(1 << ignition_crank_PIN)
+#define ignition_crank_get()				((ignition_crank_PORT->IDR >> ignition_crank_PIN) & 1)
+#define ignition_crank_is_high()			(ignition_crank_get() != 0)
+#define ignition_crank_is_low()				(ignition_crank_get() == 0)
+#define ignition_crank_is_active()			ignition_crank_is_high()
+#define ignition_crank_is_inactive()		ignition_crank_is_low()
+
+// pwr_sense: PA12, mode = InputFloat
+#define pwr_sense_PORT					GPIOA
+#define pwr_sense_PIN					12
+#define pwr_sense_MASK					(1 << pwr_sense_PIN)
+#define pwr_sense_get()				((pwr_sense_PORT->IDR >> pwr_sense_PIN) & 1)
+#define pwr_sense_is_high()			(pwr_sense_get() != 0)
+#define pwr_sense_is_low()				(pwr_sense_get() == 0)
+#define pwr_sense_is_active()			pwr_sense_is_high()
+#define pwr_sense_is_inactive()		pwr_sense_is_low()
 
 // led_red: PB0, mode = OutputPushPull
 #define led_red_PORT					GPIOB
@@ -145,22 +206,22 @@
 #define led_red_is_active()			led_red_is_high()
 #define led_red_is_inactive()		led_red_is_low()
 
-// led_orange: PB1, mode = OutputPushPull
-#define led_orange_PORT					GPIOB
-#define led_orange_PIN					1
-#define led_orange_MASK					(1 << led_orange_PIN)
-#define led_orange_set_high()			led_orange_PORT->BSRR = led_orange_MASK
-#define led_orange_set_low()			led_orange_PORT->BRR = led_orange_MASK
-#define led_orange_set_active()			led_orange_set_high()
-#define led_orange_set_inactive()		led_orange_set_low()
-#define led_orange_toggle()				led_orange_PORT->ODR ^= led_orange_MASK
-#define led_orange_set_to(value)		if (value) { led_orange_set_active(); } else { led_orange_set_inactive(); }
-#define led_orange_set_logic_to(value)	if (value) { led_orange_set_high(); } else { led_orange_set_low(); }
-#define led_orange_get()				((led_orange_PORT->IDR >> led_orange_PIN) & 1)
-#define led_orange_is_high()			(led_orange_get() != 0)
-#define led_orange_is_low()				(led_orange_get() == 0)
-#define led_orange_is_active()			led_orange_is_high()
-#define led_orange_is_inactive()		led_orange_is_low()
+// led_yellow: PB1, mode = OutputPushPull
+#define led_yellow_PORT					GPIOB
+#define led_yellow_PIN					1
+#define led_yellow_MASK					(1 << led_yellow_PIN)
+#define led_yellow_set_high()			led_yellow_PORT->BSRR = led_yellow_MASK
+#define led_yellow_set_low()			led_yellow_PORT->BRR = led_yellow_MASK
+#define led_yellow_set_active()			led_yellow_set_high()
+#define led_yellow_set_inactive()		led_yellow_set_low()
+#define led_yellow_toggle()				led_yellow_PORT->ODR ^= led_yellow_MASK
+#define led_yellow_set_to(value)		if (value) { led_yellow_set_active(); } else { led_yellow_set_inactive(); }
+#define led_yellow_set_logic_to(value)	if (value) { led_yellow_set_high(); } else { led_yellow_set_low(); }
+#define led_yellow_get()				((led_yellow_PORT->IDR >> led_yellow_PIN) & 1)
+#define led_yellow_is_high()			(led_yellow_get() != 0)
+#define led_yellow_is_low()				(led_yellow_get() == 0)
+#define led_yellow_is_active()			led_yellow_is_high()
+#define led_yellow_is_inactive()		led_yellow_is_low()
 
 // led_green: PB2, mode = OutputPushPull
 #define led_green_PORT					GPIOB
@@ -236,22 +297,32 @@
 #define button_parent_is_active()			button_parent_is_low()
 #define button_parent_is_inactive()		button_parent_is_high()
 
-// power_keepalive: PB9, mode = OutputPushPull
-#define power_keepalive_PORT					GPIOB
-#define power_keepalive_PIN					9
-#define power_keepalive_MASK					(1 << power_keepalive_PIN)
-#define power_keepalive_set_high()			power_keepalive_PORT->BSRR = power_keepalive_MASK
-#define power_keepalive_set_low()			power_keepalive_PORT->BRR = power_keepalive_MASK
-#define power_keepalive_set_active()			power_keepalive_set_high()
-#define power_keepalive_set_inactive()		power_keepalive_set_low()
-#define power_keepalive_toggle()				power_keepalive_PORT->ODR ^= power_keepalive_MASK
-#define power_keepalive_set_to(value)		if (value) { power_keepalive_set_active(); } else { power_keepalive_set_inactive(); }
-#define power_keepalive_set_logic_to(value)	if (value) { power_keepalive_set_high(); } else { power_keepalive_set_low(); }
-#define power_keepalive_get()				((power_keepalive_PORT->IDR >> power_keepalive_PIN) & 1)
-#define power_keepalive_is_high()			(power_keepalive_get() != 0)
-#define power_keepalive_is_low()				(power_keepalive_get() == 0)
-#define power_keepalive_is_active()			power_keepalive_is_high()
-#define power_keepalive_is_inactive()		power_keepalive_is_low()
+// pwr_keepalive: PB9, mode = OutputPushPull
+#define pwr_keepalive_PORT					GPIOB
+#define pwr_keepalive_PIN					9
+#define pwr_keepalive_MASK					(1 << pwr_keepalive_PIN)
+#define pwr_keepalive_set_high()			pwr_keepalive_PORT->BSRR = pwr_keepalive_MASK
+#define pwr_keepalive_set_low()			pwr_keepalive_PORT->BRR = pwr_keepalive_MASK
+#define pwr_keepalive_set_active()			pwr_keepalive_set_high()
+#define pwr_keepalive_set_inactive()		pwr_keepalive_set_low()
+#define pwr_keepalive_toggle()				pwr_keepalive_PORT->ODR ^= pwr_keepalive_MASK
+#define pwr_keepalive_set_to(value)		if (value) { pwr_keepalive_set_active(); } else { pwr_keepalive_set_inactive(); }
+#define pwr_keepalive_set_logic_to(value)	if (value) { pwr_keepalive_set_high(); } else { pwr_keepalive_set_low(); }
+#define pwr_keepalive_get()				((pwr_keepalive_PORT->IDR >> pwr_keepalive_PIN) & 1)
+#define pwr_keepalive_is_high()			(pwr_keepalive_get() != 0)
+#define pwr_keepalive_is_low()				(pwr_keepalive_get() == 0)
+#define pwr_keepalive_is_active()			pwr_keepalive_is_high()
+#define pwr_keepalive_is_inactive()		pwr_keepalive_is_low()
+
+// ignition_ccw: PB10, mode = InputPullup
+#define ignition_ccw_PORT					GPIOB
+#define ignition_ccw_PIN					10
+#define ignition_ccw_MASK					(1 << ignition_ccw_PIN)
+#define ignition_ccw_get()				((ignition_ccw_PORT->IDR >> ignition_ccw_PIN) & 1)
+#define ignition_ccw_is_high()			(ignition_ccw_get() != 0)
+#define ignition_ccw_is_low()				(ignition_ccw_get() == 0)
+#define ignition_ccw_is_active()			ignition_ccw_is_high()
+#define ignition_ccw_is_inactive()		ignition_ccw_is_low()
 
 // ws2812: PB13, mode = OutputPushPull, inverted
 #define ws2812_PORT					GPIOB

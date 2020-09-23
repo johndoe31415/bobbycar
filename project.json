@@ -6,13 +6,13 @@
 	"hse-freq":		8000000,
 	"pinmap": {
 		"PB0": { "name": "led_red", "mode": "out" },
-		"PB1": { "name": "led_orange", "mode": "out" },
+		"PB1": { "name": "led_yellow", "mode": "out" },
 		"PB2": { "name": "led_green", "mode": "out" },
 
 		"PB13": { "name": "ws2812", "invert": true, "initial": "off", "mode": "out" },
 
-		"PA9": { "name": "rs232_tx", "mode": "af", "af": "USART1" },
-		"PA10": { "name": "rs232_rx", "mode": "in", "af": "USART1" },
+		"PA9": { "name": "usart_tx", "mode": "af", "af": "USART1" },
+		"PA10": { "name": "usart_rx", "mode": "in", "af": "USART1" },
 
 		"PA4": { "name": "w25qxx_cs", "mode": "out", "initial": "off", "af": "SPI1", "invert": true },
 		"PA5": { "name": "w25qxx_sck", "mode": "af", "initial": "off", "af": "SPI1" },
@@ -21,8 +21,8 @@
 
 		"PA8": { "name": "audio_pwm", "mode": "af", "af": "TIM1", "speed": 50 },
 
-		"PA12": { "name": "power_sense", "mode": "in" },
-		"PB9": { "name": "power_keepalive", "mode": "out", "initial": "off" },
+		"PA12": { "name": "pwr_sense", "mode": "in" },
+		"PB9": { "name": "pwr_keepalive", "mode": "out", "initial": "off" },
 
 		"PB4": { "name": "led_siren", "mode": "out" },
 		"PB5": { "name": "button_siren", "mode": "in-up", "invert": true },
@@ -30,6 +30,13 @@
 		"PB7": { "name": "button_right", "mode": "in-up", "invert": true },
 		"PB8": { "name": "button_parent", "mode": "in-up", "invert": true },
 
-		"PA0": { "name": "sample_battery", "mode": "analog" }
+		"PA0": { "name": "battery_sense", "mode": "analog" },
+
+		"PA1": { "name": "uln2003_ledleft", "mode": "out", "initial": "off" },
+		"PA2": { "name": "uln2003_ledright", "mode": "out", "initial": "off" },
+		"PA3": { "name": "uln2003_emergencylights", "mode": "out", "initial": "off" },
+
+		"PB10": { "name": "ignition_ccw", "mode": "in-up" },
+		"PA11": { "name": "ignition_crank", "mode": "in-up" }
 	}
 }

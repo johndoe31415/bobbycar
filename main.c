@@ -32,9 +32,24 @@
 #include "audio.h"
 #include "ws2812.h"
 #include "adc.h"
+#include "debounce.h"
+
+enum ignition_state_t {
+	IGNITION_UNDEFINED,
+	IGNITION_ON,
+	IGNITION_OFF,
+	IGNITION_CRANK,
+	IGNITION_CCW,
+};
 
 struct uistate_t {
 	unsigned int undervoltage_counter;
+	struct debounce_t button_left;
+	struct debounce_t button_right;
+	struct debounce_t button_siren;
+	struct debounce_t button_parent;
+	struct debounce_t button_ignition_crank;
+	struct debounce_t button_ignition_ccw;
 };
 
 volatile unsigned int timectr = 0;
@@ -61,6 +76,28 @@ static void enter_error_mode(unsigned int error_code) {
 	}
 }
 
+static enum ignition_state_t determine_ignition_state(const struct uistate_t *state) {
+	enum ignition_state_t ignition_state = IGNITION_UNDEFINED;
+	bool have_power = pwr_sense_is_active();
+//	printf("Crank %d CCW %d Pwr %d\n", state.button_ignition_crank.last_state, state.button_ignition_ccw.last_state, pwr_sense_is_active());
+	if (have_power) {
+		/* Either "ignition on" or "ignition crank" */
+		if ((state->button_ignition_crank.last_state == DEBOUNCE_OPEN) && (state->button_ignition_ccw.last_state == DEBOUNCE_CLOSED)) {
+			ignition_state = IGNITION_ON;
+		} else if ((state->button_ignition_crank.last_state == DEBOUNCE_CLOSED) && (state->button_ignition_ccw.last_state == DEBOUNCE_OPEN)) {
+			ignition_state = IGNITION_CRANK;
+		}
+	} else {
+		/* Either "ignition off" or "ignition CCW" */
+		if ((state->button_ignition_crank.last_state == DEBOUNCE_OPEN) && (state->button_ignition_ccw.last_state == DEBOUNCE_OPEN)) {
+			ignition_state = IGNITION_OFF;
+		} else if ((state->button_ignition_crank.last_state == DEBOUNCE_OPEN) && (state->button_ignition_ccw.last_state == DEBOUNCE_CLOSED)) {
+			ignition_state = IGNITION_CCW;
+		}
+	}
+	return ignition_state;
+}
+
 int main(void) {
 	led_green_set_active();
 	pwr_keepalive_set_active();
@@ -68,8 +105,19 @@ int main(void) {
 	while (timectr < 125);		/* Wait 250 ms before flash settles */
 	audio_init();
 
-	struct uistate_t state = { 0 };
+	const struct debounce_config_t default_button_config = {
+		.fire_threshold = 10,
+	};
+	struct uistate_t state = {
+		.button_left.config = &default_button_config,
+		.button_right.config = &default_button_config,
+		.button_siren.config = &default_button_config,
+		.button_parent.config = &default_button_config,
+		.button_ignition_crank.config = &default_button_config,
+		.button_ignition_ccw.config = &default_button_config,
+	};
 	while (true) {
+		/* Execute roughly 100 Hz */
 		wait_systick();
 
 		uint32_t voltage_millivolts = adc_get_ext_voltage_millivolts();
@@ -83,9 +131,28 @@ int main(void) {
 			enter_error_mode(0);
 		}
 
+		if (debounce_button(&state.button_left, button_left_is_active()) == DEBOUNCE_PRESSED) {
+			printf("Left\n");
+		}
+		if (debounce_button(&state.button_right, button_right_is_active()) == DEBOUNCE_PRESSED) {
+			printf("Right\n");
+		}
+		if (debounce_button(&state.button_parent, button_parent_is_active()) == DEBOUNCE_PRESSED) {
+			printf("Parent\n");
+		}
+		if (debounce_button(&state.button_siren, button_siren_is_active()) == DEBOUNCE_PRESSED) {
+			printf("Siren\n");
+		}
+
+		debounce_button(&state.button_ignition_crank, ignition_crank_is_active());
+		debounce_button(&state.button_ignition_ccw, ignition_ccw_is_active());
+		enum ignition_state_t ignition_state = determine_ignition_state(&state);
+		printf("Ignition %d\n", ignition_state);
+
+
 #if 1
-		uint8_t foo[3] = { 0xff, 0 , 0 };
-		ws2812_sendbits(ws2812_PORT, ws2812_PIN, 1, foo);
+		uint8_t foo[6] = { 0xff, 0x0 , 0, 0x0,0xff,0 };
+		ws2812_sendbits(ws2812_PORT, ws2812_PIN, 2, foo);
 #endif
 	}
 }

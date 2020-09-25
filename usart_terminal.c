@@ -33,6 +33,7 @@
 #include "audio.h"
 #include "audio_hl.h"
 #include "stats.h"
+#include "system.h"
 
 #define CHAR_BACKSPACE				0x7f
 #define TERMINAL_BUFFER_SIZE		384
@@ -125,6 +126,10 @@ static void debug_spi(void) {
 	printf("\n");
 }
 
+static void short_delay(void) {
+	for (volatile unsigned int i = 0; i < 500000; i++);
+}
+
 static void clear_command(void) {
 	printf("\n");
 	terminal.input_buffer[terminal.fill] = 0;
@@ -146,6 +151,7 @@ static void clear_command(void) {
 		printf("siren-on               Activate the siren\n");
 		printf("siren-off              Deactivate the siren\n");
 		printf("reset                  Reset the device.\n");
+		printf("led-blink              Make all LEDs blink\n");
 	} else if (!strcmp((char*)terminal.input_buffer, "stats")) {
 		printf("DMA requests total : %u\n", stats->dma_requests_total);
 		printf("DMA requests failed: %u\n", stats->dma_requests_failed);
@@ -183,6 +189,33 @@ static void clear_command(void) {
 		audio_hl_siren_on();
 	} else if (!strcmp((char*)terminal.input_buffer, "siren-off")) {
 		audio_hl_siren_off();
+	} else if (!strcmp((char*)terminal.input_buffer, "led-blink")) {
+		while (true) {
+			printf("Signal LED\n");
+			for (unsigned int i = 0; i < 6; i++) {
+				led_siren_set_active();
+				short_delay();
+				led_siren_set_inactive();
+				short_delay();
+			}
+
+			printf("Left Turn\n");
+			for (unsigned int i = 0; i < 6; i++) {
+				uln2003_ledleft_set_active();
+				short_delay();
+				uln2003_ledleft_set_inactive();
+				short_delay();
+			}
+
+			printf("Right Turn\n");
+			for (unsigned int i = 0; i < 6; i++) {
+				uln2003_ledright_set_active();
+				short_delay();
+				uln2003_ledright_set_inactive();
+				short_delay();
+			}
+
+		}
 	} else if (!strcmp((char*)terminal.input_buffer, "binary")) {
 		printf("Now switching to binary protocol.\n");
 		terminal.fill = 0;

@@ -169,25 +169,25 @@
 #define usart_rx_is_active()			usart_rx_is_high()
 #define usart_rx_is_inactive()		usart_rx_is_low()
 
-// ignition_crank: PA11, mode = InputPullup
+// ignition_crank: PA11, mode = InputPullup, inverted
 #define ignition_crank_PORT					GPIOA
 #define ignition_crank_PIN					11
 #define ignition_crank_MASK					(1 << ignition_crank_PIN)
 #define ignition_crank_get()				((ignition_crank_PORT->IDR >> ignition_crank_PIN) & 1)
 #define ignition_crank_is_high()			(ignition_crank_get() != 0)
 #define ignition_crank_is_low()				(ignition_crank_get() == 0)
-#define ignition_crank_is_active()			ignition_crank_is_high()
-#define ignition_crank_is_inactive()		ignition_crank_is_low()
+#define ignition_crank_is_active()			ignition_crank_is_low()
+#define ignition_crank_is_inactive()		ignition_crank_is_high()
 
-// pwr_sense: PA12, mode = InputFloat
+// pwr_sense: PA12, mode = InputFloat, inverted
 #define pwr_sense_PORT					GPIOA
 #define pwr_sense_PIN					12
 #define pwr_sense_MASK					(1 << pwr_sense_PIN)
 #define pwr_sense_get()				((pwr_sense_PORT->IDR >> pwr_sense_PIN) & 1)
 #define pwr_sense_is_high()			(pwr_sense_get() != 0)
 #define pwr_sense_is_low()				(pwr_sense_get() == 0)
-#define pwr_sense_is_active()			pwr_sense_is_high()
-#define pwr_sense_is_inactive()		pwr_sense_is_low()
+#define pwr_sense_is_active()			pwr_sense_is_low()
+#define pwr_sense_is_inactive()		pwr_sense_is_high()
 
 // led_red: PB0, mode = OutputPushPull
 #define led_red_PORT					GPIOB
@@ -314,15 +314,15 @@
 #define pwr_keepalive_is_active()			pwr_keepalive_is_high()
 #define pwr_keepalive_is_inactive()		pwr_keepalive_is_low()
 
-// ignition_ccw: PB10, mode = InputPullup
+// ignition_ccw: PB10, mode = InputPullup, inverted
 #define ignition_ccw_PORT					GPIOB
 #define ignition_ccw_PIN					10
 #define ignition_ccw_MASK					(1 << ignition_ccw_PIN)
 #define ignition_ccw_get()				((ignition_ccw_PORT->IDR >> ignition_ccw_PIN) & 1)
 #define ignition_ccw_is_high()			(ignition_ccw_get() != 0)
 #define ignition_ccw_is_low()				(ignition_ccw_get() == 0)
-#define ignition_ccw_is_active()			ignition_ccw_is_high()
-#define ignition_ccw_is_inactive()		ignition_ccw_is_low()
+#define ignition_ccw_is_active()			ignition_ccw_is_low()
+#define ignition_ccw_is_inactive()		ignition_ccw_is_high()
 
 // ws2812: PB13, mode = OutputPushPull, inverted
 #define ws2812_PORT					GPIOB

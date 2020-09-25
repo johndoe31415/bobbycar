@@ -1,0 +1,13 @@
+(librepcb_symbol 11e33e9f-5080-4bad-9b92-7f869c6d3f5e
+ (name "Annotation-Plain")
+ (description "")
+ (keywords "")
+ (author "Johannes Bauer")
+ (version "0.1")
+ (created 2020-09-25T08:44:40Z)
+ (deprecated false)
+ (category bd6346a1-5cbf-4b28-a62b-637d8e1a225d)
+ (text 08cdc52b-815b-4be3-8dc4-6af2d0feff98 (layer sym_values) (value "{{VALUE}}")
+  (align left top) (height 2.5) (position 0.0 2.54) (rotation 0.0)
+ )
+)

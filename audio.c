@@ -83,7 +83,7 @@ static struct audio_buffer_t* get_next_audio_buffer(void) {
 
 void TIM2_Handler(void) {
 	if (TIM_GetITStatus(TIM2, TIM_IT_CC1) != RESET)   {
-		TIM1->CCR1 = audio_next_sample();
+		TIM1->CCR1 = audio_next_sample() >> 3;
 		TIM_ClearITPendingBit(TIM2, TIM_IT_CC1);
 	}
 }

@@ -66,11 +66,21 @@ enum engine_state_t {
 	ENGINE_SHUTTING_OFF,
 };
 
+enum led_color_t {
+	LED_OFF,
+	LED_WHITE,
+	LED_RED,
+	LED_BLUE,
+	LED_ORANGE,
+};
+
 struct uistate_t {
 	enum engine_state_t engine_state;
 	bool siren;
 	enum turn_signal_state_t turn_signal;
+	bool turn_signal_state;
 	unsigned int undervoltage_counter;
+	unsigned int audio_trigger_point_index;
 	struct debounce_t button_left;
 	struct debounce_t button_right;
 	struct debounce_t button_siren;
@@ -82,6 +92,7 @@ struct uistate_t {
 };
 
 static volatile unsigned int timectr = 0;
+static volatile bool break_systick_wait;
 static const struct debounce_config_t default_button_config = {
 	.fire_threshold = 10,
 };
@@ -97,7 +108,8 @@ static struct uistate_t ui = {
 
 static void wait_systick(void) {
 	unsigned int old_timectr = timectr;
-	while (old_timectr == timectr);
+	while ((old_timectr == timectr) && (!break_systick_wait));
+	break_systick_wait = false;
 }
 
 void SysTick_Handler(void) {
@@ -115,6 +127,47 @@ static void enter_error_mode(unsigned int error_code) {
 	while (true) {
 		__WFI();
 	}
+}
+
+static void ws2812_convert_state(enum led_color_t color, uint8_t *data) {
+	switch (color) {
+		case LED_OFF:
+			data[0] = 0x00;
+			data[1] = 0x00;
+			data[2] = 0x00;
+			break;
+
+		case LED_WHITE:
+			data[0] = 0xff;
+			data[1] = 0xff;
+			data[2] = 0xff;
+			break;
+
+		case LED_RED:
+			data[0] = 0x00;
+			data[1] = 0xff;
+			data[2] = 0x00;
+			break;
+
+		case LED_BLUE:
+			data[0] = 0x00;
+			data[1] = 0x00;
+			data[2] = 0xff;
+			break;
+
+		case LED_ORANGE:
+			data[0] = 0x59;
+			data[1] = 0x97;
+			data[2] = 0x70;
+			break;
+	}
+}
+
+static void ws2812_set_state(enum led_color_t left, enum led_color_t right) {
+	uint8_t led_data[6];
+	ws2812_convert_state(left, led_data + 3);
+	ws2812_convert_state(right, led_data + 0);
+	ws2812_sendbits(ws2812_PORT, ws2812_PIN, 2, led_data);
 }
 
 static enum ignition_state_t determine_ignition_state(void) {
@@ -147,12 +200,18 @@ static void audio_update(void) {
 	} else if (ui.engine_state == ENGINE_ON) {
 		if (ui.siren) {
 			audio_playback_fileno(FILENO_SIREN_WITH_ENGINE, true);
+		} else if (ui.turn_signal != TURN_OFF) {
+			audio_playback_fileno(FILENO_TURN_SIGNAL_WITH_ENGINE, true);
+			audio_set_trigger_point(65);
 		} else {
 			audio_playback_fileno(FILENO_ENGINE_IDLE, true);
 		}
 	} else if (ui.engine_state == ENGINE_OFF) {
 		if (ui.siren) {
 			audio_playback_fileno(FILENO_SIREN_NO_ENGINE, true);
+		} else if (ui.turn_signal != TURN_OFF) {
+			audio_playback_fileno(FILENO_TURN_SIGNAL_NO_ENGINE, true);
+			audio_set_trigger_point(65);
 		} else {
 			audio_shutoff();
 		}
@@ -171,6 +230,13 @@ void audio_trigger_end_of_sample(unsigned int fileno) {
 }
 
 void audio_trigger_point(void) {
+	ui.audio_trigger_point_index = ui.audio_trigger_point_index + 1;
+	if (ui.audio_trigger_point_index >= 12) {
+		ui.audio_trigger_point_index = 0;
+	}
+	audio_set_trigger_point(65 + 4079 * ui.audio_trigger_point_index);
+	ui.turn_signal_state = !ui.turn_signal_state;
+	break_systick_wait = true;
 }
 
 int main(void) {
@@ -196,10 +262,39 @@ int main(void) {
 		}
 
 		if (debounce_button_active(&ui.button_left, button_left_is_active())) {
-			printf("Left\n");
+			if (ui.button_right.last_state) {
+				/* Both pressed at the same time */
+				ui.turn_signal = TURN_EMERGENCY;
+			} else {
+				/* Left only */
+				if (ui.turn_signal == TURN_LEFT) {
+					ui.turn_signal = TURN_OFF;
+					ui.turn_signal_state = false;
+				} else {
+					ui.turn_signal = TURN_LEFT;
+					ui.audio_trigger_point_index = 0;
+				}
+			}
+			if ((ui.engine_state == ENGINE_ON) || (ui.engine_state == ENGINE_OFF)) {
+				audio_update();
+			}
 		}
 		if (debounce_button_active(&ui.button_right, button_right_is_active())) {
-			printf("Right\n");
+			if (ui.button_left.last_state) {
+				/* Both pressed at the same time */
+				ui.turn_signal = TURN_EMERGENCY;
+			} else {
+				if (ui.turn_signal == TURN_RIGHT) {
+					ui.turn_signal = TURN_OFF;
+					ui.turn_signal_state = false;
+				} else {
+					ui.turn_signal = TURN_RIGHT;
+					ui.audio_trigger_point_index = 0;
+				}
+			}
+			if ((ui.engine_state == ENGINE_ON) || (ui.engine_state == ENGINE_OFF)) {
+				audio_update();
+			}
 		}
 		if (debounce_button_active(&ui.button_parent, button_parent_is_active())) {
 			printf("Parent\n");
@@ -235,12 +330,46 @@ int main(void) {
 			if (ui.siren_blink_counter > 30) {
 				led_siren_toggle();
 				ui.siren_blink_counter = 0;
+				if (led_siren_is_active()) {
+					ws2812_set_state(LED_BLUE, LED_RED);
+				} else {
+					ws2812_set_state(LED_RED, LED_BLUE);
+				}
 			}
 		}
 
-#if 1
-		uint8_t foo[6] = { 0xff, 0x0 , 0, 0x0,0xff,0 };
-		ws2812_sendbits(ws2812_PORT, ws2812_PIN, 2, foo);
-#endif
+		if (ui.turn_signal == TURN_OFF) {
+			uln2003_ledleft_set_inactive();
+			uln2003_ledright_set_inactive();
+			if (ui.ignition_state.last_state == IGNITION_OFF) {
+				ws2812_set_state(LED_OFF, LED_OFF);
+			} else {
+				ws2812_set_state(LED_WHITE, LED_WHITE);
+			}
+		} else if (ui.turn_signal == TURN_LEFT) {
+			uln2003_ledleft_set_to(ui.turn_signal_state);
+			uln2003_ledright_set_inactive();
+			if (ui.ignition_state.last_state == IGNITION_OFF) {
+				ws2812_set_state(ui.turn_signal_state ? LED_ORANGE : LED_OFF, LED_OFF);
+			} else {
+				ws2812_set_state(ui.turn_signal_state ? LED_ORANGE : LED_WHITE, LED_WHITE);
+			}
+		} else if (ui.turn_signal == TURN_RIGHT) {
+			uln2003_ledleft_set_inactive();
+			uln2003_ledright_set_to(ui.turn_signal_state);
+			if (ui.ignition_state.last_state == IGNITION_OFF) {
+				ws2812_set_state(LED_OFF, ui.turn_signal_state ? LED_ORANGE : LED_OFF);
+			} else {
+				ws2812_set_state(LED_WHITE, ui.turn_signal_state ? LED_ORANGE : LED_WHITE);
+			}
+		} else if (ui.turn_signal == TURN_EMERGENCY) {
+			uln2003_ledleft_set_to(ui.turn_signal_state);
+			uln2003_ledright_set_to(ui.turn_signal_state);
+			if (ui.ignition_state.last_state == IGNITION_OFF) {
+				ws2812_set_state(ui.turn_signal_state ? LED_ORANGE : LED_OFF, ui.turn_signal_state ? LED_ORANGE : LED_OFF);
+			} else {
+				ws2812_set_state(ui.turn_signal_state ? LED_ORANGE : LED_WHITE, ui.turn_signal_state ? LED_ORANGE : LED_WHITE);
+			}
+		}
 	}
 }

@@ -33,6 +33,7 @@
 #include "audio.h"
 #include "stats.h"
 #include "system.h"
+#include "ws2812.h"
 
 #define CHAR_BACKSPACE				0x7f
 #define TERMINAL_BUFFER_SIZE		384
@@ -145,6 +146,7 @@ static void clear_command(void) {
 		printf("stop                   Stop audio playback\n");
 		printf("reset                  Reset the device.\n");
 		printf("led-blink              Make all LEDs blink\n");
+		printf("ws rrggbb              Send raw hex data to WS2812\n");
 	} else if (!strcmp((char*)terminal.input_buffer, "stats")) {
 		printf("DMA requests total : %u\n", stats->dma_requests_total);
 		printf("DMA requests failed: %u\n", stats->dma_requests_failed);
@@ -197,6 +199,16 @@ static void clear_command(void) {
 			}
 
 		}
+	} else if ((!strncmp((char*)terminal.input_buffer, "ws ", 3)) && (strlen((char*)terminal.input_buffer) == 9)) {
+		char hex_value[3];
+		uint8_t data[6];
+
+		for (unsigned int i = 0; i < 3; i++) {
+			strncpy(hex_value, (char*)terminal.input_buffer + 3 + (2 * i), 2);
+			data[i] = strtol(hex_value, NULL, 16);
+			data[i + 3] = data[i];
+		}
+		ws2812_sendbits(ws2812_PORT, ws2812_PIN, 2, data);
 	} else if (!strcmp((char*)terminal.input_buffer, "binary")) {
 		printf("Now switching to binary protocol.\n");
 		terminal.fill = 0;

@@ -31,7 +31,6 @@
 #include "winbond25q64.h"
 #include "crc32.h"
 #include "audio.h"
-#include "audio_hl.h"
 #include "stats.h"
 #include "system.h"
 
@@ -144,12 +143,6 @@ static void clear_command(void) {
 		printf("binary                 Switch to binary protocol.\n");
 		printf("play (no)              Playback sample #n\n");
 		printf("stop                   Stop audio playback\n");
-		printf("eng-on                 Start the engine\n");
-		printf("eng-off                Stop the engine\n");
-		printf("turn-on                Activate the turn signal\n");
-		printf("turn-off               Deactivate the turn signal\n");
-		printf("siren-on               Activate the siren\n");
-		printf("siren-off              Deactivate the siren\n");
 		printf("reset                  Reset the device.\n");
 		printf("led-blink              Make all LEDs blink\n");
 	} else if (!strcmp((char*)terminal.input_buffer, "stats")) {
@@ -177,18 +170,6 @@ static void clear_command(void) {
 		audio_playback_fileno(fileno, true);
 	} else if (!strcmp((char*)terminal.input_buffer, "stop")) {
 		audio_shutoff();
-	} else if (!strcmp((char*)terminal.input_buffer, "eng-on")) {
-		audio_hl_start_engine();
-	} else if (!strcmp((char*)terminal.input_buffer, "eng-off")) {
-		audio_hl_stop_engine();
-	} else if (!strcmp((char*)terminal.input_buffer, "turn-on")) {
-		audio_hl_turn_signal_on();
-	} else if (!strcmp((char*)terminal.input_buffer, "turn-off")) {
-		audio_hl_turn_signal_off();
-	} else if (!strcmp((char*)terminal.input_buffer, "siren-on")) {
-		audio_hl_siren_on();
-	} else if (!strcmp((char*)terminal.input_buffer, "siren-off")) {
-		audio_hl_siren_off();
 	} else if (!strcmp((char*)terminal.input_buffer, "led-blink")) {
 		while (true) {
 			printf("Signal LED\n");

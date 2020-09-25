@@ -27,31 +27,19 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-enum debounce_result_t {
-	DEBOUNCE_NO_CHANGE,
-	DEBOUNCE_PRESSED,
-	DEBOUNCE_RELEASED,
-};
-
-enum debounce_state_t {
-	DEBOUNCE_UNINITIALIZED = 0,
-	DEBOUNCE_OPEN = 1,
-	DEBOUNCE_CLOSED = 2,
-};
-
 struct debounce_config_t {
 	unsigned int fire_threshold;
 };
 
 struct debounce_t {
 	const struct debounce_config_t *config;
-	uint8_t last_state;
-	uint8_t fired_state;
+	unsigned int last_state;
 	unsigned int counter;
 };
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
-enum debounce_result_t debounce_button(struct debounce_t *button, bool current_state);
+bool debounce_button(struct debounce_t *button, unsigned int current_state);
+bool debounce_button_active(struct debounce_t *button, unsigned int current_state);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif

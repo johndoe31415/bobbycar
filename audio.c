@@ -27,7 +27,7 @@
 #include <stm32f10x_tim.h>
 #include "audio.h"
 #include "winbond25q64.h"
-#include "audio_hl.h"
+#include "main.h"
 
 #define AUDIO_BUFFER_SIZE 		256
 #define MAX_FILE_COUNT			8
@@ -39,6 +39,7 @@ struct audio_toc_entry_t {
 } __attribute__ ((packed));
 
 struct active_audio_file_t {
+	unsigned int fileno;
 	unsigned int playback_offset;
 	unsigned int begin_disk_offset;
 	unsigned int file_length;
@@ -53,6 +54,7 @@ struct audio_buffer_t {
 };
 
 static struct active_audio_file_t audio_file = {
+	.fileno = 0,
 	.playback_offset = 0,
 	.begin_disk_offset = 0,
 	.file_length = 	0,
@@ -112,6 +114,7 @@ void audio_playback_fileno(unsigned int fileno, bool discard_nextbuffer) {
 		audio_shutoff();
 	} else {
 		audio_playback(present_files[fileno].begin_disk_offset, present_files[fileno].file_length, discard_nextbuffer);
+		audio_file.fileno = fileno;
 	}
 }
 
@@ -152,7 +155,7 @@ static void audio_check_audio_buffers(void) {
 			audio_file.playback_offset += next_buffer->samples_total - 4;
 			if (audio_file.playback_offset >= audio_file.file_length) {
 				audio_file.playback_offset = 0;
-				audio_trigger_end_of_sample();
+				audio_trigger_end_of_sample(audio_file.fileno);
 			}
 			filling_action = IDLE;
 		} else if (dma_state == DMA_IN_PROGRESS) {

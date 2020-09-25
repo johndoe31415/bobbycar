@@ -26,7 +26,8 @@
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
 void SysTick_Handler(void);
-void TIM2_Handler(void);
+void audio_trigger_end_of_sample(unsigned int fileno);
+void audio_trigger_point(void);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif

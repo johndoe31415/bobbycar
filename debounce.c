@@ -23,40 +23,34 @@
 
 #include "debounce.h"
 
-enum debounce_result_t debounce_button(struct debounce_t *button, bool current_state) {
-	enum debounce_result_t result = DEBOUNCE_NO_CHANGE;
+bool debounce_button(struct debounce_t *button, unsigned int current_state) {
+	bool change = false;
 
-	if (button->last_state == DEBOUNCE_UNINITIALIZED) {
-		button->last_state = current_state ? DEBOUNCE_CLOSED : DEBOUNCE_OPEN;
+	if (button->counter == 0) {
+		/* Uninitialized */
+		button->last_state = current_state;
+		button->counter = button->config->fire_threshold;
 	} else {
-		bool might_fire = false;
-		if (!current_state) {
+		if (current_state != button->last_state) {
 			if (button->counter > 0) {
 				button->counter--;
 				if (button->counter == 0) {
-					might_fire = true;
+					change = true;
+					button->counter = button->config->fire_threshold;
+					button->last_state = current_state;
 				}
 			}
 		} else {
 			if (button->counter < button->config->fire_threshold) {
 				button->counter++;
-				if (button->counter == button->config->fire_threshold) {
-					might_fire = true;
-				}
-			}
-		}
-
-		if (might_fire) {
-			if ((button->last_state == DEBOUNCE_OPEN) && current_state) {
-				button->last_state = DEBOUNCE_CLOSED;
-				result = DEBOUNCE_PRESSED;
-			} else if ((button->last_state == DEBOUNCE_CLOSED) && (!current_state)) {
-				button->last_state = DEBOUNCE_OPEN;
-				result = DEBOUNCE_RELEASED;
 			}
 		}
 	}
-	return result;
+	return change;
+}
+
+bool debounce_button_active(struct debounce_t *button, unsigned int current_state) {
+	return debounce_button(button, current_state) && button->last_state;
 }
 
 #ifdef __MAIN__
@@ -74,10 +68,13 @@ int main(void) {
 		char buffer[32];
 		printf("0 or 1: ");
 		fflush(stdout);
-		fgets(buffer, sizeof(buffer) - 1, stdin);
+		if (!fgets(buffer, sizeof(buffer) - 1, stdin)) {
+			break;
+		}
 
-		bool current_state = atoi(buffer);
-		printf("[%d] -> %d\n", current_state, debounce_button(&button, current_state));
+		int current_state = atoi(buffer);
+		bool change = debounce_button(&button, current_state);
+		printf("[%d] -> %d\n", change, button.last_state);
 	}
 }
 #endif

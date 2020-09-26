@@ -74,6 +74,7 @@ static struct {
 	unsigned int file_length;
 } present_files[MAX_FILE_COUNT];
 static int trigger_point = -1;
+static unsigned int trigger_point_index = 0;
 
 
 static struct audio_buffer_t* get_current_audio_buffer(void) {
@@ -106,10 +107,6 @@ void audio_playback(unsigned int disk_offset, unsigned int file_length, bool dis
 	TIM_ITConfig(TIM2, TIM_IT_CC1, ENABLE);
 }
 
-void audio_set_trigger_point(int new_trigger_point) {
-	trigger_point = new_trigger_point;
-}
-
 void audio_playback_fileno(unsigned int fileno, bool discard_nextbuffer) {
 	if ((fileno > MAX_FILE_COUNT) || (present_files[fileno].begin_disk_offset == 0xffffffff)) {
 		audio_shutoff();
@@ -117,6 +114,12 @@ void audio_playback_fileno(unsigned int fileno, bool discard_nextbuffer) {
 		if (audio_file.fileno != fileno) {
 			audio_playback(present_files[fileno].begin_disk_offset, present_files[fileno].file_length, discard_nextbuffer);
 			audio_file.fileno = fileno;
+			if ((fileno == FILENO_TURN_SIGNAL_WITH_ENGINE) || (fileno == FILENO_TURN_SIGNAL_NO_ENGINE)) {
+				trigger_point_index = 0;
+				trigger_point = 65 + 4079 * trigger_point_index;
+			} else {
+				trigger_point = -1;
+			}
 		}
 	}
 }
@@ -170,6 +173,20 @@ static void audio_check_audio_buffers(void) {
 	}
 }
 
+int audio_current_fileno(void) {
+	return audio_file.fileno;
+}
+
+static void audio_execute_trigger_point(void) {
+	trigger_point_index += 1;
+	if (trigger_point_index >= 12) {
+		trigger_point_index = 0;
+	}
+	trigger_point = 65 + 4079 * trigger_point_index;
+
+	audio_trigger_point();
+}
+
 uint8_t audio_next_sample(void) {
 	audio_check_audio_buffers();
 
@@ -188,7 +205,7 @@ uint8_t audio_next_sample(void) {
 	current_buffer->offset++;
 	current_buffer->absolute_offset++;
 	if (current_buffer->absolute_offset == trigger_point) {
-		audio_trigger_point();
+		audio_execute_trigger_point();
 	}
 	if (current_buffer->offset >= current_buffer->samples_total) {
 		/* Buffer at end. Switch to next */

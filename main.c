@@ -34,16 +34,6 @@
 #include "adc.h"
 #include "debounce.h"
 
-enum audio_fileno_t {
-	FILENO_ENGINE_START = 0,
-	FILENO_ENGINE_IDLE = 1,
-	FILENO_ENGINE_STOP = 2,
-	FILENO_SIREN_NO_ENGINE = 3,
-	FILENO_SIREN_WITH_ENGINE = 4,
-	FILENO_TURN_SIGNAL_NO_ENGINE = 5,
-	FILENO_TURN_SIGNAL_WITH_ENGINE = 6,
-};
-
 enum ignition_state_t {
 	IGNITION_UNDEFINED,
 	IGNITION_ON,
@@ -68,7 +58,8 @@ enum engine_state_t {
 
 enum led_color_t {
 	LED_OFF,
-	LED_WHITE,
+	LED_WHITE_DARK,
+	LED_WHITE_BRIGHT,
 	LED_RED,
 	LED_BLUE,
 	LED_ORANGE,
@@ -143,7 +134,13 @@ static void ws2812_convert_state(enum led_color_t color, uint8_t *data) {
 			data[2] = 0x00;
 			break;
 
-		case LED_WHITE:
+		case LED_WHITE_DARK:
+			data[0] = 0x26;
+			data[1] = 0x26;
+			data[2] = 0x26;
+			break;
+
+		case LED_WHITE_BRIGHT:
 			data[0] = 0xff;
 			data[1] = 0xff;
 			data[2] = 0xff;
@@ -210,14 +207,13 @@ void audio_trigger_end_of_sample(unsigned int fileno) {
 }
 
 void audio_trigger_point(void) {
-#if 0
-	ui.audio_trigger_point_index = ui.audio_trigger_point_index + 1;
-	if (ui.audio_trigger_point_index >= 12) {
-		ui.audio_trigger_point_index = 0;
-	}
-	audio_set_trigger_point(65 + 4079 * ui.audio_trigger_point_index);
-//	ui.turn_signal_state = !ui.turn_signal_state;
-#endif
+	ui.turn_signal_tick = 0;
+	ui.turn_signal_blink = !ui.turn_signal_blink;
+}
+
+static bool is_turn_signal_audible(void) {
+	int audio_fileno = audio_current_fileno();
+	return (audio_fileno == FILENO_TURN_SIGNAL_NO_ENGINE) || (audio_fileno == FILENO_TURN_SIGNAL_WITH_ENGINE);
 }
 
 static void ui_set_counters(void) {
@@ -227,10 +223,12 @@ static void ui_set_counters(void) {
 		ui.siren_blink = !ui.siren_blink;
 	}
 
-	ui.turn_signal_tick++;
-	if (ui.turn_signal_tick >= 35) {
-		ui.turn_signal_tick = 0;
-		ui.turn_signal_blink = !ui.turn_signal_blink;
+	if (!is_turn_signal_audible()) {
+		ui.turn_signal_tick++;
+		if (ui.turn_signal_tick >= 37) {
+			ui.turn_signal_tick = 0;
+			ui.turn_signal_blink = !ui.turn_signal_blink;
+		}
 	}
 }
 
@@ -327,8 +325,13 @@ static void ui_set_headlights(void) {
 		left = LED_OFF;
 		right = LED_OFF;
 	} else {
-		left = LED_WHITE;
-		right = LED_WHITE;
+		if (ui.engine_state == ENGINE_OFF) {
+			left = LED_WHITE_DARK;
+			right = LED_WHITE_DARK;
+		} else {
+			left = LED_WHITE_BRIGHT;
+			right = LED_WHITE_BRIGHT;
+		}
 	}
 
 	/* When we're blinking, then this overrides the light */

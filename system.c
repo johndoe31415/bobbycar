@@ -76,6 +76,7 @@ static void gpio_init(void) {
 	uln2003_ledright_set_inactive();
 	uln2003_emergencylights_set_inactive();
 	w25qxx_cs_set_inactive();
+	led_siren_set_inactive();
 	pwr_keepalive_set_inactive();
 	ws2812_set_inactive();
 	GPIO_Init(GPIOA, &(GPIO_InitTypeDef){

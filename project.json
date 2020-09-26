@@ -24,7 +24,7 @@
 		"PA12": { "name": "pwr_sense", "mode": "in", "invert": true },
 		"PB9": { "name": "pwr_keepalive", "mode": "out", "initial": "off" },
 
-		"PB4": { "name": "led_siren", "mode": "out" },
+		"PB4": { "name": "led_siren", "mode": "out", "initial": "off" },
 		"PB5": { "name": "button_siren", "mode": "in-up", "invert": true },
 		"PB6": { "name": "button_left", "mode": "in-up", "invert": true },
 		"PB7": { "name": "button_right", "mode": "in-up", "invert": true },

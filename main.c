@@ -33,6 +33,7 @@
 #include "ws2812.h"
 #include "adc.h"
 #include "debounce.h"
+#include "time.h"
 
 enum ignition_state_t {
 	IGNITION_UNDEFINED,
@@ -88,6 +89,9 @@ struct uistate_t {
 	struct debounce_t ignition_state;
 
 	bool disable_ui;
+
+	unsigned int no_action_tick;		/* Nothing happened for a period of time, regardless of ignition state */
+	unsigned int shutoff_tick;			/* Ignition off, turn off device */
 };
 
 static volatile unsigned int timectr = 0;
@@ -103,16 +107,6 @@ static struct uistate_t ui = {
 	.button_ignition_ccw.config = &default_button_config,
 	.ignition_state.config = &default_button_config,
 };
-
-static void wait_systick(void) {
-	unsigned int old_timectr = timectr;
-	while ((old_timectr == timectr));
-}
-
-void SysTick_Handler(void) {
-	timectr++;
-	usart_terminal_tick();
-}
 
 static void enter_error_mode(unsigned int error_code) {
 	printf("%u: error code %u\n", timectr, error_code);
@@ -230,6 +224,16 @@ static void ui_set_counters(void) {
 			ui.turn_signal_blink = !ui.turn_signal_blink;
 		}
 	}
+
+	if (ui.ignition_state.last_state == IGNITION_OFF) {
+		ui.shutoff_tick++;
+		if (ui.shutoff_tick >= 500) {
+			/* about 5 seconds */
+			pwr_keepalive_set_inactive();
+		}
+	} else {
+		ui.shutoff_tick = 0;
+	}
 }
 
 static void ui_handle_undervoltage(void) {
@@ -305,6 +309,9 @@ static void ui_handle_ignition_switch(void) {
 			ui.engine_state = ENGINE_CRANKING;
 		} else if (((ui.engine_state == ENGINE_ON) || (ui.engine_state == ENGINE_CRANKING)) && ((ui.ignition_state.last_state == IGNITION_OFF) || (ui.ignition_state.last_state == IGNITION_CCW))) {
 			ui.engine_state = ENGINE_SHUTTING_OFF;
+		}
+		if (ui.ignition_state.last_state != IGNITION_OFF) {
+			pwr_keepalive_set_active();
 		}
 	}
 }
@@ -401,12 +408,12 @@ int main(void) {
 	led_green_set_active();
 	pwr_keepalive_set_active();
 	printf("Device cold start complete.\n");
-	while (timectr < 125);		/* Wait 250 ms before flash settles */
+//	while (timectr < 125);		/* Wait 250 ms before flash settles */
 	audio_init();
 
 	while (!ui.disable_ui) {
 		/* Execute roughly 100 Hz */
-		wait_systick();
+		systick_wait();
 
 		ui_set_counters();
 		ui_handle_undervoltage();

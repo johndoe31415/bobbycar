@@ -28,6 +28,8 @@
 #include "audio.h"
 #include "winbond25q64.h"
 #include "main.h"
+#include "crc32.h"
+#include "time.h"
 
 #define AUDIO_BUFFER_SIZE 		256
 #define MAX_FILE_COUNT			8
@@ -228,11 +230,21 @@ void audio_init(void) {
 	for (unsigned int i = 0; i < MAX_FILE_COUNT; i++) {
 		const unsigned int offset = sizeof(struct audio_toc_entry_t) * i;
 		struct audio_toc_entry_t entry;
-		spiflash_read(offset, &entry, sizeof(entry));
-		present_files[i].begin_disk_offset = entry.begin_disk_offset;
-		present_files[i].file_length = entry.file_length;
-		if (entry.begin_disk_offset != 0xffffffff) {
-			printf("File %d: \"%s\", offset 0x%lx, length %lu, CRC32 0x%lx\n", i, entry.filename, entry.begin_disk_offset, entry.file_length, entry.crc32);
+		present_files[i].begin_disk_offset = 0xffffffff;
+		for (unsigned int try = 0; try < 100; try++) {
+			spiflash_read(offset, &entry, sizeof(entry));
+			if (entry.begin_disk_offset != 0xffffffff) {
+				uint32_t computed_crc = compute_crc32(&entry, sizeof(entry) - 4);
+				if (computed_crc == entry.crc32) {
+					printf("File %d: \"%s\", offset 0x%lx, length %lu, CRC32 0x%lx OK\n", i, entry.filename, entry.begin_disk_offset, entry.file_length, entry.crc32);
+					present_files[i].begin_disk_offset = entry.begin_disk_offset;
+					present_files[i].file_length = entry.file_length;
+					break;
+				} else {
+					printf("File %d: offset 0x%lx, length %lu, CRC32 ERR 0x%lx computed 0x%lx. Retrying (try #%d).\n", i, entry.begin_disk_offset, entry.file_length, entry.crc32, computed_crc, try + 1);
+					systick_wait();
+				}
+			}
 		}
 	}
 }

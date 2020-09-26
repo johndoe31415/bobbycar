@@ -77,10 +77,17 @@ enum led_color_t {
 struct uistate_t {
 	enum engine_state_t engine_state;
 	bool siren;
+
 	enum turn_signal_state_t turn_signal;
-	bool turn_signal_state;
-	unsigned int undervoltage_counter;
+	unsigned int turn_signal_tick;
+	bool turn_signal_blink;
+
+	unsigned int siren_tick;
+	bool siren_blink;
+
+	unsigned int undervoltage_tick;
 	unsigned int audio_trigger_point_index;
+
 	struct debounce_t button_left;
 	struct debounce_t button_right;
 	struct debounce_t button_siren;
@@ -88,11 +95,9 @@ struct uistate_t {
 	struct debounce_t button_ignition_crank;
 	struct debounce_t button_ignition_ccw;
 	struct debounce_t ignition_state;
-	unsigned int siren_blink_counter;
 };
 
 static volatile unsigned int timectr = 0;
-static volatile bool break_systick_wait;
 static const struct debounce_config_t default_button_config = {
 	.fire_threshold = 10,
 };
@@ -108,8 +113,7 @@ static struct uistate_t ui = {
 
 static void wait_systick(void) {
 	unsigned int old_timectr = timectr;
-	while ((old_timectr == timectr) && (!break_systick_wait));
-	break_systick_wait = false;
+	while ((old_timectr == timectr));
 }
 
 void SysTick_Handler(void) {
@@ -156,9 +160,12 @@ static void ws2812_convert_state(enum led_color_t color, uint8_t *data) {
 			break;
 
 		case LED_ORANGE:
-			data[0] = 0x59;
-			data[1] = 0x97;
-			data[2] = 0x70;
+//			data[0] = 0x59;
+//			data[1] = 0x97;
+//			data[2] = 0x70;
+			data[0] = 0x3e;
+			data[1] = 0xd3;
+			data[2] = 0x00;
 			break;
 	}
 }
@@ -235,8 +242,155 @@ void audio_trigger_point(void) {
 		ui.audio_trigger_point_index = 0;
 	}
 	audio_set_trigger_point(65 + 4079 * ui.audio_trigger_point_index);
-	ui.turn_signal_state = !ui.turn_signal_state;
-	break_systick_wait = true;
+//	ui.turn_signal_state = !ui.turn_signal_state;
+}
+
+static void ui_set_counters(void) {
+	ui.siren_tick++;
+	if (ui.siren_tick >= 20) {
+		ui.siren_tick = 0;
+		ui.siren_blink = !ui.siren_blink;
+	}
+
+	ui.turn_signal_tick++;
+	if (ui.turn_signal_tick >= 35) {
+		ui.turn_signal_tick = 0;
+		ui.turn_signal_blink = !ui.turn_signal_blink;
+	}
+}
+
+static void ui_handle_undervoltage(void) {
+	uint32_t voltage_millivolts = adc_get_ext_voltage_millivolts();
+	if (voltage_millivolts < 3500 * 3) {
+		ui.undervoltage_tick++;
+	} else {
+		ui.undervoltage_tick = 0;
+	}
+	if (ui.undervoltage_tick >= 100) {
+		/* One second of straight undervoltage, go into error mode. */
+		enter_error_mode(0);
+	}
+}
+
+static void ui_set_turn_signal(enum turn_signal_state_t signal_state) {
+	ui.turn_signal = signal_state;
+	ui.turn_signal_blink = false;
+	ui.turn_signal_tick = 0;
+}
+
+static void ui_handle_turn_signal_buttons(void) {
+	if (debounce_button_active(&ui.button_left, button_left_is_active())) {
+		if (ui.button_right.last_state) {
+			/* Both pressed at the same time */
+			ui_set_turn_signal(TURN_EMERGENCY);
+		} else {
+			/* Left only */
+			if (ui.turn_signal == TURN_LEFT) {
+				ui_set_turn_signal(TURN_OFF);
+			} else {
+				ui_set_turn_signal(TURN_LEFT);
+			}
+		}
+//		if ((ui.engine_state == ENGINE_ON) || (ui.engine_state == ENGINE_OFF)) {
+//			audio_update();
+//		}
+	}
+	if (debounce_button_active(&ui.button_right, button_right_is_active())) {
+		if (ui.button_left.last_state) {
+			/* Both pressed at the same time */
+			ui_set_turn_signal(TURN_EMERGENCY);
+		} else {
+			if (ui.turn_signal == TURN_RIGHT) {
+				ui_set_turn_signal(TURN_OFF);
+			} else {
+				ui_set_turn_signal(TURN_RIGHT);
+			}
+		}
+//		if ((ui.engine_state == ENGINE_ON) || (ui.engine_state == ENGINE_OFF)) {
+//			audio_update();
+//		}
+	}
+}
+
+static void ui_handle_parent_button(void) {
+	if (debounce_button_active(&ui.button_parent, button_parent_is_active())) {
+		printf("Parent\n");
+	}
+}
+
+static void ui_handle_siren_button(void) {
+	if (debounce_button_active(&ui.button_siren, button_siren_is_active())) {
+		ui.siren = !ui.siren;
+		if (ui.siren) {
+			ui.siren_blink = false;
+			ui.siren_tick = 0;
+		}
+		audio_update();
+	}
+}
+
+static void ui_handle_ignition_switch(void) {
+	debounce_button(&ui.button_ignition_crank, ignition_crank_is_active());
+	debounce_button(&ui.button_ignition_ccw, ignition_ccw_is_active());
+	enum ignition_state_t current_ignition_state = determine_ignition_state();
+	bool ignition_state_changed = debounce_button(&ui.ignition_state, current_ignition_state);
+	if (ignition_state_changed) {
+		if ((ui.engine_state == ENGINE_OFF) && (ui.ignition_state.last_state == IGNITION_CRANK)) {
+			ui.engine_state = ENGINE_CRANKING;
+			audio_update();
+		} else if (((ui.engine_state == ENGINE_ON) || (ui.engine_state == ENGINE_CRANKING)) && ((ui.ignition_state.last_state == IGNITION_OFF) || (ui.ignition_state.last_state == IGNITION_CCW))) {
+			ui.engine_state = ENGINE_SHUTTING_OFF;
+			audio_update();
+		}
+	}
+}
+
+static bool is_left_blinker_active(void) {
+	return ((ui.turn_signal != TURN_OFF) && (ui.turn_signal_blink) && ((ui.turn_signal == TURN_EMERGENCY) || (ui.turn_signal == TURN_LEFT)));
+}
+
+static bool is_right_blinker_active(void) {
+	return ((ui.turn_signal != TURN_OFF) && (ui.turn_signal_blink) && ((ui.turn_signal == TURN_EMERGENCY) || (ui.turn_signal == TURN_RIGHT)));
+}
+
+static void ui_set_headlights(void) {
+	enum led_color_t left, right;
+
+	/* By default, white color if not doing anything */
+	if (ui.ignition_state.last_state == IGNITION_OFF) {
+		left = LED_OFF;
+		right = LED_OFF;
+	} else {
+		left = LED_WHITE;
+		right = LED_WHITE;
+	}
+
+	/* When we're blinking, then this overrides the light */
+	if (is_left_blinker_active()) {
+		left = LED_ORANGE;
+	}
+	if (is_right_blinker_active()) {
+		right = LED_ORANGE;
+	}
+
+	/* But siren has greatest precedence */
+	if (ui.siren) {
+		if (ui.siren_blink) {
+			left = LED_RED;
+			right = LED_BLUE;
+		} else {
+			left = LED_BLUE;
+			right = LED_RED;
+		}
+	}
+
+	ws2812_set_state(left, right);
+}
+
+static void ui_set_top_leds(void) {
+	uln2003_ledleft_set_to(is_left_blinker_active());
+	uln2003_ledright_set_to(is_right_blinker_active());
+	led_siren_set_to(ui.siren && ui.siren_blink);
 }
 
 int main(void) {
@@ -250,86 +404,23 @@ int main(void) {
 		/* Execute roughly 100 Hz */
 		wait_systick();
 
-		uint32_t voltage_millivolts = adc_get_ext_voltage_millivolts();
-		if (voltage_millivolts < 3500 * 3) {
-			ui.undervoltage_counter++;
-		} else {
-			ui.undervoltage_counter = 0;
-		}
-		if (ui.undervoltage_counter >= 100) {
-			/* One second of straight undervoltage, go into error mode. */
-			enter_error_mode(0);
-		}
+		ui_set_counters();
+		ui_handle_undervoltage();
+		ui_handle_turn_signal_buttons();
+		ui_handle_parent_button();
+		ui_handle_siren_button();
+		ui_handle_ignition_switch();
+		ui_set_headlights();
+		ui_set_top_leds();
 
-		if (debounce_button_active(&ui.button_left, button_left_is_active())) {
-			if (ui.button_right.last_state) {
-				/* Both pressed at the same time */
-				ui.turn_signal = TURN_EMERGENCY;
-			} else {
-				/* Left only */
-				if (ui.turn_signal == TURN_LEFT) {
-					ui.turn_signal = TURN_OFF;
-					ui.turn_signal_state = false;
-				} else {
-					ui.turn_signal = TURN_LEFT;
-					ui.audio_trigger_point_index = 0;
-				}
-			}
-			if ((ui.engine_state == ENGINE_ON) || (ui.engine_state == ENGINE_OFF)) {
-				audio_update();
-			}
-		}
-		if (debounce_button_active(&ui.button_right, button_right_is_active())) {
-			if (ui.button_left.last_state) {
-				/* Both pressed at the same time */
-				ui.turn_signal = TURN_EMERGENCY;
-			} else {
-				if (ui.turn_signal == TURN_RIGHT) {
-					ui.turn_signal = TURN_OFF;
-					ui.turn_signal_state = false;
-				} else {
-					ui.turn_signal = TURN_RIGHT;
-					ui.audio_trigger_point_index = 0;
-				}
-			}
-			if ((ui.engine_state == ENGINE_ON) || (ui.engine_state == ENGINE_OFF)) {
-				audio_update();
-			}
-		}
-		if (debounce_button_active(&ui.button_parent, button_parent_is_active())) {
-			printf("Parent\n");
-		}
-		if (debounce_button_active(&ui.button_siren, button_siren_is_active())) {
-			ui.siren = !ui.siren;
-			if (ui.siren) {
-				led_siren_set_active();
-			} else {
-				ui.siren_blink_counter = 0;
-			}
-			audio_update();
-		}
-
-		debounce_button(&ui.button_ignition_crank, ignition_crank_is_active());
-		debounce_button(&ui.button_ignition_ccw, ignition_ccw_is_active());
-		enum ignition_state_t current_ignition_state = determine_ignition_state();
-		bool ignition_state_changed = debounce_button(&ui.ignition_state, current_ignition_state);
-		if (ignition_state_changed) {
-			if ((ui.engine_state == ENGINE_OFF) && (ui.ignition_state.last_state == IGNITION_CRANK)) {
-				ui.engine_state = ENGINE_CRANKING;
-				audio_update();
-			} else if (((ui.engine_state == ENGINE_ON) || (ui.engine_state == ENGINE_CRANKING)) && ((ui.ignition_state.last_state == IGNITION_OFF) || (ui.ignition_state.last_state == IGNITION_CCW))) {
-				ui.engine_state = ENGINE_SHUTTING_OFF;
-				audio_update();
-			}
-		}
-
+#if 0
 		if (!ui.siren) {
 			led_siren_set_inactive();
 		} else {
-			ui.siren_blink_counter++;
-			if (ui.siren_blink_counter > 30) {
+			ui.siren_blink_tick++;
+			if (ui.siren_blink_tick > 30) {
 				led_siren_toggle();
-				ui.siren_blink_counter = 0;
+				ui.siren_blink_tick = 0;
 				if (led_siren_is_active()) {
 					ws2812_set_state(LED_BLUE, LED_RED);
 				} else {
@@ -371,5 +462,6 @@ int main(void) {
 				ws2812_set_state(ui.turn_signal_state ? LED_ORANGE : LED_WHITE, ui.turn_signal_state ? LED_ORANGE : LED_WHITE);
 			}
 		}
+#endif
 	}
 }

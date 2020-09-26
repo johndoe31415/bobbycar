@@ -88,6 +88,7 @@ struct uistate_t {
 	struct debounce_t button_ignition_ccw;
 	struct debounce_t ignition_state;
 
+	bool hibernation;
 	bool disable_ui;
 
 	unsigned int no_action_tick;		/* Nothing happened for a period of time, regardless of ignition state */
@@ -234,6 +235,21 @@ static void ui_set_counters(void) {
 	} else {
 		ui.shutoff_tick = 0;
 	}
+
+	ui.no_action_tick++;
+	if (ui.no_action_tick >= 60000) {
+		/* 10 minutes without any action */
+		ui.no_action_tick = 0;
+		ui.engine_state = ENGINE_OFF;
+		ui.turn_signal = TURN_OFF;
+		ui.siren = false;
+		ui.hibernation = true;
+	}
+}
+
+static void ui_have_action(void) {
+	ui.no_action_tick = 0;
+	ui.hibernation = false;
 }
 
 static void ui_handle_undervoltage(void) {
@@ -257,6 +273,7 @@ static void ui_set_turn_signal(enum turn_signal_state_t signal_state) {
 
 static void ui_handle_turn_signal_buttons(void) {
 	if (debounce_button_active(&ui.button_left, button_left_is_active())) {
+		ui_have_action();
 		if (ui.button_right.last_state) {
 			/* Both pressed at the same time */
 			ui_set_turn_signal(TURN_EMERGENCY);
@@ -270,6 +287,7 @@ static void ui_handle_turn_signal_buttons(void) {
 		}
 	}
 	if (debounce_button_active(&ui.button_right, button_right_is_active())) {
+		ui_have_action();
 		if (ui.button_left.last_state) {
 			/* Both pressed at the same time */
 			ui_set_turn_signal(TURN_EMERGENCY);
@@ -285,12 +303,14 @@ static void ui_handle_turn_signal_buttons(void) {
 
 static void ui_handle_parent_button(void) {
 	if (debounce_button_active(&ui.button_parent, button_parent_is_active())) {
+		ui_have_action();
 		printf("Parent\n");
 	}
 }
 
 static void ui_handle_siren_button(void) {
 	if (debounce_button_active(&ui.button_siren, button_siren_is_active())) {
+		ui_have_action();
 		ui.siren = !ui.siren;
 		if (ui.siren) {
 			ui.siren_blink = false;
@@ -305,6 +325,7 @@ static void ui_handle_ignition_switch(void) {
 	enum ignition_state_t current_ignition_state = determine_ignition_state();
 	bool ignition_state_changed = debounce_button(&ui.ignition_state, current_ignition_state);
 	if (ignition_state_changed) {
+
 		if ((ui.engine_state == ENGINE_OFF) && (ui.ignition_state.last_state == IGNITION_CRANK)) {
 			ui.engine_state = ENGINE_CRANKING;
 		} else if (((ui.engine_state == ENGINE_ON) || (ui.engine_state == ENGINE_CRANKING)) && ((ui.ignition_state.last_state == IGNITION_OFF) || (ui.ignition_state.last_state == IGNITION_CCW))) {
@@ -349,7 +370,7 @@ static void ui_set_headlights(void) {
 		right = LED_ORANGE;
 	}
 
-	/* But siren has greatest precedence */
+	/* But siren has greater precedence */
 	if (ui.siren) {
 		if (ui.siren_blink) {
 			left = LED_RED;
@@ -360,6 +381,11 @@ static void ui_set_headlights(void) {
 		}
 	}
 
+	/* Hibernation mode has greatest precedence however */
+	if (ui.hibernation) {
+		left = LED_OFF;
+		right = LED_OFF;
+	}
 	ws2812_set_state(left, right);
 }
 

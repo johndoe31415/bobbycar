@@ -95,6 +95,8 @@ struct uistate_t {
 	struct debounce_t button_ignition_crank;
 	struct debounce_t button_ignition_ccw;
 	struct debounce_t ignition_state;
+
+	bool disable_ui;
 };
 
 static volatile unsigned int timectr = 0;
@@ -180,7 +182,6 @@ static void ws2812_set_state(enum led_color_t left, enum led_color_t right) {
 static enum ignition_state_t determine_ignition_state(void) {
 	enum ignition_state_t ignition_state = IGNITION_UNDEFINED;
 	bool have_power = pwr_sense_is_active();
-//	printf("Crank %d CCW %d Pwr %d\n", state.button_ignition_crank.last_state, state.button_ignition_ccw.last_state, pwr_sense_is_active());
 	if (have_power) {
 		/* Either "ignition on" or "ignition crank" */
 		if ((ui.button_ignition_crank.last_state == 0) && (ui.button_ignition_ccw.last_state == 1)) {
@@ -199,50 +200,24 @@ static enum ignition_state_t determine_ignition_state(void) {
 	return ignition_state;
 }
 
-static void audio_update(void) {
-	if (ui.engine_state == ENGINE_CRANKING) {
-		audio_playback_fileno(FILENO_ENGINE_START, true);
-	} else if (ui.engine_state == ENGINE_SHUTTING_OFF) {
-		audio_playback_fileno(FILENO_ENGINE_STOP, true);
-	} else if (ui.engine_state == ENGINE_ON) {
-		if (ui.siren) {
-			audio_playback_fileno(FILENO_SIREN_WITH_ENGINE, true);
-		} else if (ui.turn_signal != TURN_OFF) {
-			audio_playback_fileno(FILENO_TURN_SIGNAL_WITH_ENGINE, true);
-			audio_set_trigger_point(65);
-		} else {
-			audio_playback_fileno(FILENO_ENGINE_IDLE, true);
-		}
-	} else if (ui.engine_state == ENGINE_OFF) {
-		if (ui.siren) {
-			audio_playback_fileno(FILENO_SIREN_NO_ENGINE, true);
-		} else if (ui.turn_signal != TURN_OFF) {
-			audio_playback_fileno(FILENO_TURN_SIGNAL_NO_ENGINE, true);
-			audio_set_trigger_point(65);
-		} else {
-			audio_shutoff();
-		}
-	}
-}
-
 void audio_trigger_end_of_sample(unsigned int fileno) {
 	if (fileno == FILENO_ENGINE_START) {
 		/* Start of engine is finished */
 		ui.engine_state = ENGINE_ON;
-		audio_update();
 	} else if (fileno == FILENO_ENGINE_STOP) {
 		ui.engine_state = ENGINE_OFF;
-		audio_update();
 	}
 }
 
 void audio_trigger_point(void) {
+#if 0
 	ui.audio_trigger_point_index = ui.audio_trigger_point_index + 1;
 	if (ui.audio_trigger_point_index >= 12) {
 		ui.audio_trigger_point_index = 0;
 	}
 	audio_set_trigger_point(65 + 4079 * ui.audio_trigger_point_index);
 //	ui.turn_signal_state = !ui.turn_signal_state;
+#endif
 }
 
 static void ui_set_counters(void) {
@@ -291,9 +266,6 @@ static void ui_handle_turn_signal_buttons(void) {
 				ui_set_turn_signal(TURN_LEFT);
 			}
 		}
-//		if ((ui.engine_state == ENGINE_ON) || (ui.engine_state == ENGINE_OFF)) {
-//			audio_update();
-//		}
 	}
 	if (debounce_button_active(&ui.button_right, button_right_is_active())) {
 		if (ui.button_left.last_state) {
@@ -306,9 +278,6 @@ static void ui_handle_turn_signal_buttons(void) {
 				ui_set_turn_signal(TURN_RIGHT);
 			}
 		}
-//		if ((ui.engine_state == ENGINE_ON) || (ui.engine_state == ENGINE_OFF)) {
-//			audio_update();
-//		}
 	}
 }
 
@@ -325,7 +294,6 @@ static void ui_handle_siren_button(void) {
 			ui.siren_blink = false;
 			ui.siren_tick = 0;
 		}
-		audio_update();
 	}
 }
 
@@ -337,10 +305,8 @@ static void ui_handle_ignition_switch(void) {
 	if (ignition_state_changed) {
 		if ((ui.engine_state == ENGINE_OFF) && (ui.ignition_state.last_state == IGNITION_CRANK)) {
 			ui.engine_state = ENGINE_CRANKING;
-			audio_update();
 		} else if (((ui.engine_state == ENGINE_ON) || (ui.engine_state == ENGINE_CRANKING)) && ((ui.ignition_state.last_state == IGNITION_OFF) || (ui.ignition_state.last_state == IGNITION_CCW))) {
 			ui.engine_state = ENGINE_SHUTTING_OFF;
-			audio_update();
 		}
 	}
 }
@@ -393,6 +359,41 @@ static void ui_set_top_leds(void) {
 	led_siren_set_to(ui.siren && ui.siren_blink);
 }
 
+void ui_shutoff(void) {
+	ui.disable_ui = true;
+}
+
+static void ui_check_audio(void) {
+	int play_fileno = -1;
+	if (ui.engine_state == ENGINE_CRANKING) {
+		play_fileno = FILENO_ENGINE_START;
+	} else if (ui.engine_state == ENGINE_SHUTTING_OFF) {
+		play_fileno = FILENO_ENGINE_STOP;
+	} else if (ui.engine_state == ENGINE_ON) {
+		if (ui.siren) {
+			play_fileno = FILENO_SIREN_WITH_ENGINE;
+		} else if (ui.turn_signal != TURN_OFF) {
+			play_fileno = FILENO_TURN_SIGNAL_WITH_ENGINE;
+		} else {
+			play_fileno = FILENO_ENGINE_IDLE;
+		}
+	} else if (ui.engine_state == ENGINE_OFF) {
+		if (ui.siren) {
+			play_fileno = FILENO_SIREN_NO_ENGINE;
+		} else if (ui.turn_signal != TURN_OFF) {
+			play_fileno = FILENO_TURN_SIGNAL_NO_ENGINE;
+		} else {
+			play_fileno = -1;
+		}
+	}
+
+	if (play_fileno == -1) {
+		audio_shutoff();
+	} else {
+		audio_playback_fileno(play_fileno, true);
+	}
+}
+
 int main(void) {
 	led_green_set_active();
 	pwr_keepalive_set_active();
@@ -400,7 +401,7 @@ int main(void) {
 	while (timectr < 125);		/* Wait 250 ms before flash settles */
 	audio_init();
 
-	while (true) {
+	while (!ui.disable_ui) {
 		/* Execute roughly 100 Hz */
 		wait_systick();
 
@@ -412,56 +413,8 @@ int main(void) {
 		ui_handle_ignition_switch();
 		ui_set_headlights();
 		ui_set_top_leds();
-
-#if 0
-		if (!ui.siren) {
-			led_siren_set_inactive();
-		} else {
-			ui.siren_blink_tick++;
-			if (ui.siren_blink_tick > 30) {
-				led_siren_toggle();
-				ui.siren_blink_tick = 0;
-				if (led_siren_is_active()) {
-					ws2812_set_state(LED_BLUE, LED_RED);
-				} else {
-					ws2812_set_state(LED_RED, LED_BLUE);
-				}
-			}
-		}
-
-		if (ui.turn_signal == TURN_OFF) {
-			uln2003_ledleft_set_inactive();
-			uln2003_ledright_set_inactive();
-			if (ui.ignition_state.last_state == IGNITION_OFF) {
-				ws2812_set_state(LED_OFF, LED_OFF);
-			} else {
-				ws2812_set_state(LED_WHITE, LED_WHITE);
-			}
-		} else if (ui.turn_signal == TURN_LEFT) {
-			uln2003_ledleft_set_to(ui.turn_signal_state);
-			uln2003_ledright_set_inactive();
-			if (ui.ignition_state.last_state == IGNITION_OFF) {
-				ws2812_set_state(ui.turn_signal_state ? LED_ORANGE : LED_OFF, LED_OFF);
-			} else {
-				ws2812_set_state(ui.turn_signal_state ? LED_ORANGE : LED_WHITE, LED_WHITE);
-			}
-		} else if (ui.turn_signal == TURN_RIGHT) {
-			uln2003_ledleft_set_inactive();
-			uln2003_ledright_set_to(ui.turn_signal_state);
-			if (ui.ignition_state.last_state == IGNITION_OFF) {
-				ws2812_set_state(LED_OFF, ui.turn_signal_state ? LED_ORANGE : LED_OFF);
-			} else {
-				ws2812_set_state(LED_WHITE, ui.turn_signal_state ? LED_ORANGE : LED_WHITE);
-			}
-		} else if (ui.turn_signal == TURN_EMERGENCY) {
-			uln2003_ledleft_set_to(ui.turn_signal_state);
-			uln2003_ledright_set_to(ui.turn_signal_state);
-			if (ui.ignition_state.last_state == IGNITION_OFF) {
-				ws2812_set_state(ui.turn_signal_state ? LED_ORANGE : LED_OFF, ui.turn_signal_state ? LED_ORANGE : LED_OFF);
-			} else {
-				ws2812_set_state(ui.turn_signal_state ? LED_ORANGE : LED_WHITE, ui.turn_signal_state ? LED_ORANGE : LED_WHITE);
-			}
-		}
-#endif
+		ui_check_audio();
 	}
+
+	while (true);
 }

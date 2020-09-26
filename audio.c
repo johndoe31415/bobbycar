@@ -33,13 +33,14 @@
 #define MAX_FILE_COUNT			8
 
 struct audio_toc_entry_t {
-	unsigned int begin_disk_offset;
-	unsigned int file_length;
-	uint8_t filename[56];
+	uint32_t begin_disk_offset;
+	uint32_t file_length;
+	uint8_t filename[52];
+	uint32_t crc32;
 } __attribute__ ((packed));
 
 struct active_audio_file_t {
-	unsigned int fileno;
+	int fileno;
 	unsigned int playback_offset;
 	unsigned int begin_disk_offset;
 	unsigned int file_length;
@@ -113,8 +114,10 @@ void audio_playback_fileno(unsigned int fileno, bool discard_nextbuffer) {
 	if ((fileno > MAX_FILE_COUNT) || (present_files[fileno].begin_disk_offset == 0xffffffff)) {
 		audio_shutoff();
 	} else {
-		audio_playback(present_files[fileno].begin_disk_offset, present_files[fileno].file_length, discard_nextbuffer);
-		audio_file.fileno = fileno;
+		if (audio_file.fileno != fileno) {
+			audio_playback(present_files[fileno].begin_disk_offset, present_files[fileno].file_length, discard_nextbuffer);
+			audio_file.fileno = fileno;
+		}
 	}
 }
 
@@ -200,6 +203,7 @@ void audio_shutoff(void) {
 	/* Disable audio "next_sample" IRQ and set output to 0 */
 	TIM_ITConfig(TIM2, TIM_IT_CC1, DISABLE);
 	TIM1->CCR1 = 0;
+	audio_file.fileno = -1;
 }
 
 void audio_init(void) {
@@ -211,7 +215,7 @@ void audio_init(void) {
 		present_files[i].begin_disk_offset = entry.begin_disk_offset;
 		present_files[i].file_length = entry.file_length;
 		if (entry.begin_disk_offset != 0xffffffff) {
-			printf("File %d: \"%s\", offset 0x%x, length %d\n", i, entry.filename, entry.begin_disk_offset, entry.file_length);
+			printf("File %d: \"%s\", offset 0x%lx, length %lu, CRC32 0x%lx\n", i, entry.filename, entry.begin_disk_offset, entry.file_length, entry.crc32);
 		}
 	}
 }

@@ -34,6 +34,7 @@
 #include "stats.h"
 #include "system.h"
 #include "ws2812.h"
+#include "main.h"
 
 #define CHAR_BACKSPACE				0x7f
 #define TERMINAL_BUFFER_SIZE		384
@@ -213,6 +214,7 @@ static void clear_command(void) {
 		printf("Now switching to binary protocol.\n");
 		terminal.fill = 0;
 		terminal.protocol = BINARY;
+		ui_shutoff();
 		audio_shutoff();
 	} else {
 		printf("Unknown command: %s\n", (char*)terminal.input_buffer);

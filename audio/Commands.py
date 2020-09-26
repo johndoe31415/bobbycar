@@ -25,6 +25,7 @@ import glob
 import hashlib
 import struct
 import json
+import zlib
 import contextlib
 
 class BaseCommand():
@@ -96,7 +97,9 @@ class CompileAudioImageCommand(BaseCommand):
 		# Binary TOC first
 		binary_toc = bytearray()
 		for entry in self._content:
-			binary_entry = struct.pack("< L L 56s", entry["offset"], entry["size"], entry["name"].encode())
+			binary_entry_without_crc = struct.pack("< L L 52s", entry["offset"], entry["size"], entry["name"].encode())
+			crc = zlib.crc32(binary_entry_without_crc)
+			binary_entry = struct.pack("< 60s L", binary_entry_without_crc, crc)
 			binary_toc += binary_entry
 		binary_toc = self._pad_to(binary_toc, 4096)
 		image += binary_toc
@@ -127,10 +130,10 @@ class DecompileAudioImageCommand(BaseCommand):
 
 		for entry_no in range(64):
 			data = self._image[64 * entry_no : 64 * (entry_no + 1)]
-			(offset, size, name) = struct.unpack("< L L 56s", data)
+			(offset, size, name, crc) = struct.unpack("< L L 52s L", data)
 			if offset != 0xffffffff:
 				name = name.rstrip(b"\x00").decode()
-				print("%s: offset 0x%x size %d" % (name, offset, size))
+				print("%s: offset 0x%x size %d, CRC 0x%x" % (name, offset, size, crc))
 				output_filename = self._args.output_dir + "/" + name + ".raw"
 				with open(output_filename, "wb") as f:
 					f.write(self._image[offset : offset + size])

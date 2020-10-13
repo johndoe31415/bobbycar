@@ -77,7 +77,7 @@ static struct {
 } present_files[MAX_FILE_COUNT];
 static int trigger_point = -1;
 static unsigned int trigger_point_index = 0;
-
+static uint8_t shift_value = 3;
 
 static struct audio_buffer_t* get_current_audio_buffer(void) {
 	return &audio_buffers[buffer_index];
@@ -89,8 +89,25 @@ static struct audio_buffer_t* get_next_audio_buffer(void) {
 
 void TIM2_Handler(void) {
 	if (TIM_GetITStatus(TIM2, TIM_IT_CC1) != RESET)   {
-		TIM1->CCR1 = audio_next_sample() >> 3;
+		TIM1->CCR1 = audio_next_sample() >> shift_value;
 		TIM_ClearITPendingBit(TIM2, TIM_IT_CC1);
+	}
+}
+
+void audio_set_volume(unsigned int volume) {
+	if (volume > 3) {
+		volume = 3;
+	}
+	if (volume == 0) {
+		shift_value = 8;
+	} else if (volume == 1) {
+		shift_value = 3;
+	} else if (volume == 2) {
+		shift_value = 2;
+	} else if (volume == 3) {
+		shift_value = 1;
+	} else if (volume == 4) {
+		shift_value = 0;
 	}
 }
 

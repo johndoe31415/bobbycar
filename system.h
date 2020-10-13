@@ -341,6 +341,23 @@
 #define ws2812_is_active()			ws2812_is_low()
 #define ws2812_is_inactive()		ws2812_is_high()
 
+// kill_signal: PB15, mode = OutputPushPull
+#define kill_signal_PORT					GPIOB
+#define kill_signal_PIN					15
+#define kill_signal_MASK					(1 << kill_signal_PIN)
+#define kill_signal_set_high()			kill_signal_PORT->BSRR = kill_signal_MASK
+#define kill_signal_set_low()			kill_signal_PORT->BRR = kill_signal_MASK
+#define kill_signal_set_active()			kill_signal_set_high()
+#define kill_signal_set_inactive()		kill_signal_set_low()
+#define kill_signal_toggle()				kill_signal_PORT->ODR ^= kill_signal_MASK
+#define kill_signal_set_to(value)		if (value) { kill_signal_set_active(); } else { kill_signal_set_inactive(); }
+#define kill_signal_set_logic_to(value)	if (value) { kill_signal_set_high(); } else { kill_signal_set_low(); }
+#define kill_signal_get()				((kill_signal_PORT->IDR >> kill_signal_PIN) & 1)
+#define kill_signal_is_high()			(kill_signal_get() != 0)
+#define kill_signal_is_low()				(kill_signal_get() == 0)
+#define kill_signal_is_active()			kill_signal_is_high()
+#define kill_signal_is_inactive()		kill_signal_is_low()
+
 
 void default_fault_handler(void);
 void early_system_init(void);

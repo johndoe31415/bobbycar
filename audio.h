@@ -38,6 +38,7 @@ enum audio_fileno_t {
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
 void TIM2_Handler(void);
+void audio_set_volume(unsigned int volume);
 void audio_playback(unsigned int disk_offset, unsigned int file_length, bool discard_nextbuffer);
 void audio_playback_fileno(unsigned int fileno, bool discard_nextbuffer);
 int audio_current_fileno(void);

@@ -37,7 +37,9 @@
 		"PA3": { "name": "uln2003_emergencylights", "mode": "out", "initial": "off" },
 
 		"PB10": { "name": "ignition_ccw", "mode": "in-up", "invert": true },
-		"PA11": { "name": "ignition_crank", "mode": "in-up", "invert": true }
+		"PA11": { "name": "ignition_crank", "mode": "in-up", "invert": true },
+
+		"PB15": { "name": "kill_signal", "mode": "out", "initial": "off" }
 	},
 	"remap": [ "Remap_SWJ_NoJTRST" ]
 }

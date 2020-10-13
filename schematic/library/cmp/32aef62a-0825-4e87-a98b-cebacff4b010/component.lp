@@ -8,7 +8,7 @@
  (deprecated false)
  (category e9663545-80dd-4658-9357-d4ef62e55168)
  (schematic_only false)
- (default_value "{{PARTNUMBER or DEVICE or COMPONENT}}")
+ (default_value "{{DEVICE or COMPONENT}}")
  (prefix "T")
  (signal 035a1a7a-a586-4ec1-907b-3688a4dab77f (name "I_SENSE") (role passive)
   (required false) (negated false) (clock false) (forced_net "")

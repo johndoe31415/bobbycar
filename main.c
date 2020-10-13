@@ -35,6 +35,16 @@
 #include "debounce.h"
 #include "time.h"
 
+/* We distinguish soft and hard shutoff. A hard shutoff always works but forces
+ * the user to set ignition OFF and ignition ON to restart. We also do not
+ * immediately soft-off because we want to continue with the engine shut-off
+ * sound and keep in memory the parent button configuration for a while
+ * (otherwise when the car is turned to silent mode, it would be sufficient to
+ * turn off and on to re-enable the sound) */
+#define TIMEOUT_SOFT_SHUTOFF_AFTER_IGNITION_OFF_SECS		60
+//#define TIMEOUT_HARD_SHUTOFF_AFTER_INACTIVITY_SECS			(10 * 60)
+#define TIMEOUT_HARD_SHUTOFF_AFTER_INACTIVITY_SECS			10
+
 enum ignition_state_t {
 	IGNITION_UNDEFINED,
 	IGNITION_ON,
@@ -66,9 +76,16 @@ enum led_color_t {
 	LED_ORANGE,
 };
 
+enum siren_state_t {
+	SIREN_OFF,
+	SIREN_LIGHTS_ON,
+	SIREN_HORN_ON,
+	SIREN_LIGHTS_AND_HORN_ON,
+};
+
 struct uistate_t {
 	enum engine_state_t engine_state;
-	bool siren;
+	enum siren_state_t siren;
 
 	enum turn_signal_state_t turn_signal;
 	unsigned int turn_signal_tick;
@@ -93,6 +110,8 @@ struct uistate_t {
 
 	unsigned int no_action_tick;		/* Nothing happened for a period of time, regardless of ignition state */
 	unsigned int shutoff_tick;			/* Ignition off, turn off device */
+
+	unsigned int audio_volume;
 };
 
 static volatile unsigned int timectr = 0;
@@ -107,6 +126,7 @@ static struct uistate_t ui = {
 	.button_ignition_crank.config = &default_button_config,
 	.button_ignition_ccw.config = &default_button_config,
 	.ignition_state.config = &default_button_config,
+	.audio_volume = 1,
 };
 
 static void enter_error_mode(unsigned int error_code) {
@@ -116,6 +136,8 @@ static void enter_error_mode(unsigned int error_code) {
 	led_yellow_set_to(error_code & 2);
 	led_siren_set_inactive();
 	audio_shutoff();
+	for (volatile unsigned int i = i; i < 10000000; i++);
+	kill_signal_set_active();
 	while (true) {
 		__WFI();
 	}
@@ -211,6 +233,12 @@ static bool is_turn_signal_audible(void) {
 	return (audio_fileno == FILENO_TURN_SIGNAL_NO_ENGINE) || (audio_fileno == FILENO_TURN_SIGNAL_WITH_ENGINE);
 }
 
+static void hard_shutoff(void) {
+	pwr_keepalive_set_inactive();
+	kill_signal_set_active();
+	while (true);
+}
+
 static void ui_set_counters(void) {
 	ui.siren_tick++;
 	if (ui.siren_tick >= 20) {
@@ -228,22 +256,23 @@ static void ui_set_counters(void) {
 
 	if (ui.ignition_state.last_state == IGNITION_OFF) {
 		ui.shutoff_tick++;
-		if (ui.shutoff_tick >= 500) {
-			/* about 5 seconds */
-			pwr_keepalive_set_inactive();
+		if (ui.shutoff_tick >= TIMEOUT_SOFT_SHUTOFF_AFTER_IGNITION_OFF_SECS * 100) {
+			/* about 60 seconds */
+			hard_shutoff();
 		}
 	} else {
 		ui.shutoff_tick = 0;
 	}
 
 	ui.no_action_tick++;
-	if (ui.no_action_tick >= 60000) {
+	if (ui.no_action_tick >= (TIMEOUT_HARD_SHUTOFF_AFTER_INACTIVITY_SECS * 100)) {
 		/* 10 minutes without any action */
 		ui.no_action_tick = 0;
 		ui.engine_state = ENGINE_OFF;
 		ui.turn_signal = TURN_OFF;
-		ui.siren = false;
+		ui.siren = SIREN_OFF;
 		ui.hibernation = true;
+		hard_shutoff();
 	}
 }
 
@@ -304,15 +333,32 @@ static void ui_handle_turn_signal_buttons(void) {
 static void ui_handle_parent_button(void) {
 	if (debounce_button_active(&ui.button_parent, button_parent_is_active())) {
 		ui_have_action();
-		printf("Parent\n");
+
+		ui.audio_volume = ui.audio_volume + 1;
+		if (ui.audio_volume == 5) {
+			ui.audio_volume = 0;
+			if (ui.siren == SIREN_LIGHTS_AND_HORN_ON) {
+				ui.siren = SIREN_LIGHTS_ON;
+			} else if (ui.siren == SIREN_HORN_ON) {
+				ui.siren = SIREN_OFF;
+			}
+		}
+		audio_set_volume(ui.audio_volume);
 	}
 }
 
 static void ui_handle_siren_button(void) {
 	if (debounce_button_active(&ui.button_siren, button_siren_is_active())) {
 		ui_have_action();
-		ui.siren = !ui.siren;
-		if (ui.siren) {
+
+		ui.siren = ui.siren + 1;
+		if ((ui.audio_volume == 0) &&  (ui.siren > SIREN_LIGHTS_ON)) {
+			ui.siren = SIREN_OFF;
+		} else if (ui.siren > SIREN_LIGHTS_AND_HORN_ON) {
+			ui.siren = SIREN_OFF;
+		}
+
+		if (ui.siren != SIREN_OFF) {
 			ui.siren_blink = false;
 			ui.siren_tick = 0;
 		}
@@ -333,6 +379,9 @@ static void ui_handle_ignition_switch(void) {
 		}
 		if (ui.ignition_state.last_state != IGNITION_OFF) {
 			pwr_keepalive_set_active();
+		} else {
+			ui.turn_signal = TURN_OFF;
+			ui.siren = SIREN_OFF;
 		}
 	}
 }
@@ -371,7 +420,7 @@ static void ui_set_headlights(void) {
 	}
 
 	/* But siren has greater precedence */
-	if (ui.siren) {
+	if (ui.siren != SIREN_OFF) {
 		if (ui.siren_blink) {
 			left = LED_RED;
 			right = LED_BLUE;
@@ -392,7 +441,7 @@ static void ui_set_headlights(void) {
 static void ui_set_top_leds(void) {
 	uln2003_ledleft_set_to(is_left_blinker_active());
 	uln2003_ledright_set_to(is_right_blinker_active());
-	led_siren_set_to(ui.siren && ui.siren_blink);
+	led_siren_set_to((ui.siren != SIREN_OFF) && ui.siren_blink);
 }
 
 void ui_shutoff(void) {
@@ -406,7 +455,7 @@ static void ui_check_audio(void) {
 	} else if (ui.engine_state == ENGINE_SHUTTING_OFF) {
 		play_fileno = FILENO_ENGINE_STOP;
 	} else if (ui.engine_state == ENGINE_ON) {
-		if (ui.siren) {
+		if ((ui.siren == SIREN_HORN_ON) || (ui.siren == SIREN_LIGHTS_AND_HORN_ON)) {
 			play_fileno = FILENO_SIREN_WITH_ENGINE;
 		} else if (ui.turn_signal != TURN_OFF) {
 			play_fileno = FILENO_TURN_SIGNAL_WITH_ENGINE;
@@ -414,7 +463,7 @@ static void ui_check_audio(void) {
 			play_fileno = FILENO_ENGINE_IDLE;
 		}
 	} else if (ui.engine_state == ENGINE_OFF) {
-		if (ui.siren) {
+		if ((ui.siren == SIREN_HORN_ON) || (ui.siren == SIREN_LIGHTS_AND_HORN_ON)) {
 			play_fileno = FILENO_SIREN_NO_ENGINE;
 		} else if (ui.turn_signal != TURN_OFF) {
 			play_fileno = FILENO_TURN_SIGNAL_NO_ENGINE;
@@ -430,11 +479,17 @@ static void ui_check_audio(void) {
 	}
 }
 
+static void ui_check_siren_light(void) {
+	bool enable_siren_light = (ui.siren == SIREN_LIGHTS_ON) || (ui.siren == SIREN_LIGHTS_AND_HORN_ON);
+	uln2003_emergencylights_set_to(enable_siren_light);
+}
+
 int main(void) {
 	led_green_set_active();
 	pwr_keepalive_set_active();
 	printf("Device cold start complete.\n");
 //	while (timectr < 125);		/* Wait 250 ms before flash settles */
+	audio_set_volume(ui.audio_volume);
 	audio_init();
 
 	while (!ui.disable_ui) {
@@ -450,6 +505,7 @@ int main(void) {
 		ui_set_headlights();
 		ui_set_top_leds();
 		ui_check_audio();
+		ui_check_siren_light();
 	}
 
 	while (true);

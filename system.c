@@ -36,7 +36,7 @@ void default_fault_handler(void) {
 	while (true);
 }
 
-static void clock_switch(void) {
+void clock_switch(void) {
 	/* Enable HSE oscillator, 8.000 MHz */
 	RCC->CR |= RCC_CR_HSEON;
 
@@ -77,9 +77,9 @@ static void gpio_init(void) {
 	uln2003_emergencylights_set_inactive();
 	w25qxx_cs_set_inactive();
 	led_siren_set_inactive();
-	pwr_keepalive_set_inactive();
+	sleep_set_inactive();
 	ws2812_set_inactive();
-	kill_signal_set_inactive();
+	turn_off_set_inactive();
 	GPIO_Init(GPIOA, &(GPIO_InitTypeDef){
 			.GPIO_Pin = GPIO_Pin_5 | GPIO_Pin_7 | GPIO_Pin_9,
 			.GPIO_Mode = GPIO_Mode_AF_PP,
@@ -96,7 +96,7 @@ static void gpio_init(void) {
 			.GPIO_Speed = GPIO_Speed_2MHz,
 	});
 	GPIO_Init(GPIOA, &(GPIO_InitTypeDef){
-			.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_10 | GPIO_Pin_12,
+			.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_10,
 			.GPIO_Mode = GPIO_Mode_IN_FLOATING,
 			.GPIO_Speed = GPIO_Speed_2MHz,
 	});
@@ -111,12 +111,12 @@ static void gpio_init(void) {
 			.GPIO_Speed = GPIO_Speed_2MHz,
 	});
 	GPIO_Init(GPIOB, &(GPIO_InitTypeDef){
-			.GPIO_Pin = GPIO_Pin_5 | GPIO_Pin_6 | GPIO_Pin_7 | GPIO_Pin_8 | GPIO_Pin_10,
+			.GPIO_Pin = GPIO_Pin_5 | GPIO_Pin_6 | GPIO_Pin_7 | GPIO_Pin_8 | GPIO_Pin_9 | GPIO_Pin_10,
 			.GPIO_Mode = GPIO_Mode_IPU,
 			.GPIO_Speed = GPIO_Speed_2MHz,
 	});
 	GPIO_Init(GPIOB, &(GPIO_InitTypeDef){
-			.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1 | GPIO_Pin_2 | GPIO_Pin_4 | GPIO_Pin_9 | GPIO_Pin_13 | GPIO_Pin_15,
+			.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1 | GPIO_Pin_2 | GPIO_Pin_4 | GPIO_Pin_11 | GPIO_Pin_13 | GPIO_Pin_15,
 			.GPIO_Mode = GPIO_Mode_Out_PP,
 			.GPIO_Speed = GPIO_Speed_2MHz,
 	});

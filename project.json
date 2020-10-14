@@ -21,9 +21,6 @@
 
 		"PA8": { "name": "audio_pwm", "mode": "af", "af": "TIM1", "speed": 50 },
 
-		"PA12": { "name": "pwr_sense", "mode": "in", "invert": true },
-		"PB9": { "name": "pwr_keepalive", "mode": "out", "initial": "off" },
-
 		"PB4": { "name": "led_siren", "mode": "out", "initial": "off" },
 		"PB5": { "name": "button_siren", "mode": "in-up", "invert": true },
 		"PB6": { "name": "button_left", "mode": "in-up", "invert": true },
@@ -36,10 +33,12 @@
 		"PA2": { "name": "uln2003_ledright", "mode": "out", "initial": "off" },
 		"PA3": { "name": "uln2003_emergencylights", "mode": "out", "initial": "off" },
 
+		"PB9": { "name": "ignition_on", "mode": "in-up", "invert": true },
 		"PB10": { "name": "ignition_ccw", "mode": "in-up", "invert": true },
 		"PA11": { "name": "ignition_crank", "mode": "in-up", "invert": true },
 
-		"PB15": { "name": "kill_signal", "mode": "out", "initial": "off" }
+		"PB15": { "name": "turn_off", "mode": "out", "initial": "off" },
+		"PB11": { "name": "sleep", "mode": "out", "initial": "off" }
 	},
 	"remap": [ "Remap_SWJ_NoJTRST" ]
 }

@@ -30,7 +30,7 @@
 #define __STM32_F103_SYSTEM_H__
 
 #include <stm32f10x_gpio.h>
-
+void clock_switch(void);
 // battery_sense: PA0, mode = Analog
 #define battery_sense_PORT					GPIOA
 #define battery_sense_PIN					0
@@ -179,16 +179,6 @@
 #define ignition_crank_is_active()			ignition_crank_is_low()
 #define ignition_crank_is_inactive()		ignition_crank_is_high()
 
-// pwr_sense: PA12, mode = InputFloat, inverted
-#define pwr_sense_PORT					GPIOA
-#define pwr_sense_PIN					12
-#define pwr_sense_MASK					(1 << pwr_sense_PIN)
-#define pwr_sense_get()				((pwr_sense_PORT->IDR >> pwr_sense_PIN) & 1)
-#define pwr_sense_is_high()			(pwr_sense_get() != 0)
-#define pwr_sense_is_low()				(pwr_sense_get() == 0)
-#define pwr_sense_is_active()			pwr_sense_is_low()
-#define pwr_sense_is_inactive()		pwr_sense_is_high()
-
 // led_red: PB0, mode = OutputPushPull
 #define led_red_PORT					GPIOB
 #define led_red_PIN					0
@@ -297,22 +287,15 @@
 #define button_parent_is_active()			button_parent_is_low()
 #define button_parent_is_inactive()		button_parent_is_high()
 
-// pwr_keepalive: PB9, mode = OutputPushPull
-#define pwr_keepalive_PORT					GPIOB
-#define pwr_keepalive_PIN					9
-#define pwr_keepalive_MASK					(1 << pwr_keepalive_PIN)
-#define pwr_keepalive_set_high()			pwr_keepalive_PORT->BSRR = pwr_keepalive_MASK
-#define pwr_keepalive_set_low()			pwr_keepalive_PORT->BRR = pwr_keepalive_MASK
-#define pwr_keepalive_set_active()			pwr_keepalive_set_high()
-#define pwr_keepalive_set_inactive()		pwr_keepalive_set_low()
-#define pwr_keepalive_toggle()				pwr_keepalive_PORT->ODR ^= pwr_keepalive_MASK
-#define pwr_keepalive_set_to(value)		if (value) { pwr_keepalive_set_active(); } else { pwr_keepalive_set_inactive(); }
-#define pwr_keepalive_set_logic_to(value)	if (value) { pwr_keepalive_set_high(); } else { pwr_keepalive_set_low(); }
-#define pwr_keepalive_get()				((pwr_keepalive_PORT->IDR >> pwr_keepalive_PIN) & 1)
-#define pwr_keepalive_is_high()			(pwr_keepalive_get() != 0)
-#define pwr_keepalive_is_low()				(pwr_keepalive_get() == 0)
-#define pwr_keepalive_is_active()			pwr_keepalive_is_high()
-#define pwr_keepalive_is_inactive()		pwr_keepalive_is_low()
+// ignition_on: PB9, mode = InputPullup, inverted
+#define ignition_on_PORT					GPIOB
+#define ignition_on_PIN					9
+#define ignition_on_MASK					(1 << ignition_on_PIN)
+#define ignition_on_get()				((ignition_on_PORT->IDR >> ignition_on_PIN) & 1)
+#define ignition_on_is_high()			(ignition_on_get() != 0)
+#define ignition_on_is_low()				(ignition_on_get() == 0)
+#define ignition_on_is_active()			ignition_on_is_low()
+#define ignition_on_is_inactive()		ignition_on_is_high()
 
 // ignition_ccw: PB10, mode = InputPullup, inverted
 #define ignition_ccw_PORT					GPIOB
@@ -323,6 +306,23 @@
 #define ignition_ccw_is_low()				(ignition_ccw_get() == 0)
 #define ignition_ccw_is_active()			ignition_ccw_is_low()
 #define ignition_ccw_is_inactive()		ignition_ccw_is_high()
+
+// sleep: PB11, mode = OutputPushPull
+#define sleep_PORT					GPIOB
+#define sleep_PIN					11
+#define sleep_MASK					(1 << sleep_PIN)
+#define sleep_set_high()			sleep_PORT->BSRR = sleep_MASK
+#define sleep_set_low()			sleep_PORT->BRR = sleep_MASK
+#define sleep_set_active()			sleep_set_high()
+#define sleep_set_inactive()		sleep_set_low()
+#define sleep_toggle()				sleep_PORT->ODR ^= sleep_MASK
+#define sleep_set_to(value)		if (value) { sleep_set_active(); } else { sleep_set_inactive(); }
+#define sleep_set_logic_to(value)	if (value) { sleep_set_high(); } else { sleep_set_low(); }
+#define sleep_get()				((sleep_PORT->IDR >> sleep_PIN) & 1)
+#define sleep_is_high()			(sleep_get() != 0)
+#define sleep_is_low()				(sleep_get() == 0)
+#define sleep_is_active()			sleep_is_high()
+#define sleep_is_inactive()		sleep_is_low()
 
 // ws2812: PB13, mode = OutputPushPull, inverted
 #define ws2812_PORT					GPIOB
@@ -341,22 +341,22 @@
 #define ws2812_is_active()			ws2812_is_low()
 #define ws2812_is_inactive()		ws2812_is_high()
 
-// kill_signal: PB15, mode = OutputPushPull
-#define kill_signal_PORT					GPIOB
-#define kill_signal_PIN					15
-#define kill_signal_MASK					(1 << kill_signal_PIN)
-#define kill_signal_set_high()			kill_signal_PORT->BSRR = kill_signal_MASK
-#define kill_signal_set_low()			kill_signal_PORT->BRR = kill_signal_MASK
-#define kill_signal_set_active()			kill_signal_set_high()
-#define kill_signal_set_inactive()		kill_signal_set_low()
-#define kill_signal_toggle()				kill_signal_PORT->ODR ^= kill_signal_MASK
-#define kill_signal_set_to(value)		if (value) { kill_signal_set_active(); } else { kill_signal_set_inactive(); }
-#define kill_signal_set_logic_to(value)	if (value) { kill_signal_set_high(); } else { kill_signal_set_low(); }
-#define kill_signal_get()				((kill_signal_PORT->IDR >> kill_signal_PIN) & 1)
-#define kill_signal_is_high()			(kill_signal_get() != 0)
-#define kill_signal_is_low()				(kill_signal_get() == 0)
-#define kill_signal_is_active()			kill_signal_is_high()
-#define kill_signal_is_inactive()		kill_signal_is_low()
+// turn_off: PB15, mode = OutputPushPull
+#define turn_off_PORT					GPIOB
+#define turn_off_PIN					15
+#define turn_off_MASK					(1 << turn_off_PIN)
+#define turn_off_set_high()			turn_off_PORT->BSRR = turn_off_MASK
+#define turn_off_set_low()			turn_off_PORT->BRR = turn_off_MASK
+#define turn_off_set_active()			turn_off_set_high()
+#define turn_off_set_inactive()		turn_off_set_low()
+#define turn_off_toggle()				turn_off_PORT->ODR ^= turn_off_MASK
+#define turn_off_set_to(value)		if (value) { turn_off_set_active(); } else { turn_off_set_inactive(); }
+#define turn_off_set_logic_to(value)	if (value) { turn_off_set_high(); } else { turn_off_set_low(); }
+#define turn_off_get()				((turn_off_PORT->IDR >> turn_off_PIN) & 1)
+#define turn_off_is_high()			(turn_off_get() != 0)
+#define turn_off_is_low()				(turn_off_get() == 0)
+#define turn_off_is_active()			turn_off_is_high()
+#define turn_off_is_inactive()		turn_off_is_low()
 
 
 void default_fault_handler(void);

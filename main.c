@@ -101,6 +101,7 @@ struct uistate_t {
 	struct debounce_t button_right;
 	struct debounce_t button_siren;
 	struct debounce_t button_parent;
+	struct debounce_t button_ignition_on;
 	struct debounce_t button_ignition_crank;
 	struct debounce_t button_ignition_ccw;
 	struct debounce_t ignition_state;
@@ -123,6 +124,7 @@ static struct uistate_t ui = {
 	.button_right.config = &default_button_config,
 	.button_siren.config = &default_button_config,
 	.button_parent.config = &default_button_config,
+	.button_ignition_on.config = &default_button_config,
 	.button_ignition_crank.config = &default_button_config,
 	.button_ignition_ccw.config = &default_button_config,
 	.ignition_state.config = &default_button_config,
@@ -137,7 +139,7 @@ static void enter_error_mode(unsigned int error_code) {
 	led_siren_set_inactive();
 	audio_shutoff();
 	for (volatile unsigned int i = i; i < 10000000; i++);
-	kill_signal_set_active();
+	turn_off_set_active();
 	while (true) {
 		__WFI();
 	}
@@ -195,7 +197,8 @@ static void ws2812_set_state(enum led_color_t left, enum led_color_t right) {
 
 static enum ignition_state_t determine_ignition_state(void) {
 	enum ignition_state_t ignition_state = IGNITION_UNDEFINED;
-	bool have_power = pwr_sense_is_active();
+	//bool have_power = pwr_sense_is_active();
+	bool have_power = true;
 	if (have_power) {
 		/* Either "ignition on" or "ignition crank" */
 		if ((ui.button_ignition_crank.last_state == 0) && (ui.button_ignition_ccw.last_state == 1)) {
@@ -234,8 +237,8 @@ static bool is_turn_signal_audible(void) {
 }
 
 static void hard_shutoff(void) {
-	pwr_keepalive_set_inactive();
-	kill_signal_set_active();
+	//pwr_keepalive_set_inactive();
+	turn_off_set_active();
 	while (true);
 }
 
@@ -366,6 +369,7 @@ static void ui_handle_siren_button(void) {
 }
 
 static void ui_handle_ignition_switch(void) {
+	debounce_button(&ui.button_ignition_on, ignition_on_is_active());
 	debounce_button(&ui.button_ignition_crank, ignition_crank_is_active());
 	debounce_button(&ui.button_ignition_ccw, ignition_ccw_is_active());
 	enum ignition_state_t current_ignition_state = determine_ignition_state();
@@ -378,7 +382,7 @@ static void ui_handle_ignition_switch(void) {
 			ui.engine_state = ENGINE_SHUTTING_OFF;
 		}
 		if (ui.ignition_state.last_state != IGNITION_OFF) {
-			pwr_keepalive_set_active();
+			//pwr_keepalive_set_active();
 		} else {
 			ui.turn_signal = TURN_OFF;
 			ui.siren = SIREN_OFF;
@@ -484,13 +488,67 @@ static void ui_check_siren_light(void) {
 	uln2003_emergencylights_set_to(enable_siren_light);
 }
 
+static void clock_switch_hsi(void) {
+	/* Enable HSI oscillator, 8.000 MHz */
+	RCC->CR |= RCC_CR_HSION;
+
+	/* Wait for HSI to become ready */
+	while (!(RCC->CR & RCC_CR_HSIRDY));
+
+	/* Switch clock source to HSI */
+	RCC->CFGR = (RCC->CFGR & ~RCC_CFGR_SW) | RCC_CFGR_SW_HSI;
+
+	/* Wait for HSI to become active clock */
+	while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_HSI);
+
+	/* Disable HSE and PLL to save power */
+	RCC->CR &= ~(RCC_CR_HSEON | RCC_CR_PLLON);
+}
+
+#if 0
+static void clock_switch_hse(void) {
+	/* Enable HSE oscillator, 8.000 MHz */
+	RCC->CR |= RCC_CR_HSEON;
+
+	/* Wait for HSE to become ready */
+	while (!(RCC->CR & RCC_CR_HSERDY));
+
+	/* Switch clock source to HSE */
+	RCC->CFGR = (RCC->CFGR & ~RCC_CFGR_SW) | RCC_CFGR_SW_HSE;
+
+	/* Wait for HSI to become active clock */
+	while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_HSE);
+
+	/* Disable HSI and PLL to save power */
+	RCC->CR &= ~(RCC_CR_HSION | RCC_CR_PLLON);
+}
+#endif
+
+static void enter_sleep_mode(void) {
+	uln2003_ledleft_set_inactive();
+	uln2003_ledright_set_inactive();
+	uln2003_emergencylights_set_inactive();
+	led_siren_set_inactive();
+	led_green_set_inactive();
+	led_yellow_set_inactive();
+	led_red_set_inactive();
+	audio_shutoff();
+	sleep_set_active();
+	clock_switch_hsi();
+	while (true) {
+		__WFI();
+		/* TODO: implement abort sleep condition */
+	}
+	clock_switch();
+}
+
 int main(void) {
 	led_green_set_active();
-	pwr_keepalive_set_active();
 	printf("Device cold start complete.\n");
-//	while (timectr < 125);		/* Wait 250 ms before flash settles */
 	audio_set_volume(ui.audio_volume);
 	audio_init();
+
+	enter_sleep_mode();		/* TODO DEBUG ONLY */
 
 	while (!ui.disable_ui) {
 		/* Execute roughly 100 Hz */

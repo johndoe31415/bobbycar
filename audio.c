@@ -95,8 +95,8 @@ void TIM2_Handler(void) {
 }
 
 void audio_set_volume(unsigned int volume) {
-	if (volume > 3) {
-		volume = 3;
+	if (volume > 4) {
+		volume = 4;
 	}
 	if (volume == 0) {
 		shift_value = 8;

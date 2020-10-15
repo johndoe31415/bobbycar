@@ -30,7 +30,7 @@
 #define __STM32_F103_SYSTEM_H__
 
 #include <stm32f10x_gpio.h>
-void clock_switch(void);
+
 // battery_sense: PA0, mode = Analog
 #define battery_sense_PORT					GPIOA
 #define battery_sense_PIN					0
@@ -361,5 +361,7 @@ void clock_switch(void);
 
 void default_fault_handler(void);
 void early_system_init(void);
+void clock_switch_hse_pll(void);
+void clock_switch_hsi(void);
 
 #endif

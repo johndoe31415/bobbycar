@@ -36,7 +36,8 @@ void default_fault_handler(void) {
 	while (true);
 }
 
-void clock_switch(void) {
+
+void clock_switch_hse_pll(void) {
 	/* Enable HSE oscillator, 8.000 MHz */
 	RCC->CR |= RCC_CR_HSEON;
 
@@ -54,7 +55,8 @@ void clock_switch(void) {
 	/* Wait for PLL to become ready */
 	while (!(RCC->CR & RCC_CR_PLLRDY));
 
-	/* Two Flash wait state needed between 48 MHz and 72 MHz SYSCLK (SYSCLK = 72.000 MHz) */
+	/* We don't know the speed we previously operated at, so assume we
+	 * currently need worst-case timing (2 Flash wait states) */
 	FLASH_SetLatency(FLASH_Latency_2);
 
 	/* Switch clock source to PLL */
@@ -63,8 +65,35 @@ void clock_switch(void) {
 	/* Wait for PLL to become active clock */
 	while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL);
 
+	/* Two Flash wait state needed between 48 MHz and 72 MHz SYSCLK (SYSCLK = 72.000 MHz) */
+	/* This has already been set before, so no need to do anything */
+
 	/* Disable HSI to save power */
 	RCC->CR &= ~RCC_CR_HSION;
+}
+
+void clock_switch_hsi(void) {
+	/* Enable HSI oscillator, 8.000 MHz */
+	RCC->CR |= RCC_CR_HSION;
+
+	/* Wait for HSI to become ready */
+	while (!(RCC->CR & RCC_CR_HSIRDY));
+
+	/* We don't know the speed we previously operated at, so assume we
+	 * currently need worst-case timing (2 Flash wait states) */
+	FLASH_SetLatency(FLASH_Latency_2);
+
+	/* Switch clock source to HSI */
+	RCC->CFGR = (RCC->CFGR & ~RCC_CFGR_SW) | RCC_CFGR_SW_HSI;
+
+	/* Wait for HSI to become active */
+	while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_HSI);
+
+	/* No Flash wait states needed below 24 MHz SYSCLK (SYSCLK = 8.000 MHz) */
+	FLASH_SetLatency(FLASH_Latency_0);
+
+	/* Disable HSE and PLL to save power */
+	RCC->CR &= ~(RCC_CR_HSEON | RCC_CR_PLLON);
 }
 
 static void gpio_init(void) {
@@ -123,6 +152,6 @@ static void gpio_init(void) {
 }
 
 void early_system_init(void) {
-	clock_switch();
+	clock_switch_hse_pll();
 	gpio_init();
 }

@@ -35,15 +35,12 @@
 #include "debounce.h"
 #include "time.h"
 
-/* We distinguish soft and hard shutoff. A hard shutoff always works but forces
- * the user to set ignition OFF and ignition ON to restart. We also do not
- * immediately soft-off because we want to continue with the engine shut-off
- * sound and keep in memory the parent button configuration for a while
- * (otherwise when the car is turned to silent mode, it would be sufficient to
- * turn off and on to re-enable the sound) */
-#define TIMEOUT_SOFT_SHUTOFF_AFTER_IGNITION_OFF_SECS		60
-//#define TIMEOUT_HARD_SHUTOFF_AFTER_INACTIVITY_SECS			(10 * 60)
-#define TIMEOUT_HARD_SHUTOFF_AFTER_INACTIVITY_SECS			10
+/* After this time in 'ignition off' state, the toy will shut off */
+#define TIMEOUT_SHUTOFF_AFTER_IGNITION_OFF_SECS		(1 * 60)
+
+/* After this time of inactivity (no button presses whatsoever), the toy will
+ * shut off */
+#define TIMEOUT_SHUTOFF_AFTER_IDLE_SECS				(10 * 60)
 
 enum ignition_state_t {
 	IGNITION_UNDEFINED,
@@ -139,7 +136,7 @@ static void enter_error_mode(unsigned int error_code) {
 	led_siren_set_inactive();
 	audio_shutoff();
 	for (volatile unsigned int i = i; i < 10000000; i++);
-	turn_off_set_active();
+	//turn_off_set_active();
 	while (true) {
 		__WFI();
 	}
@@ -197,9 +194,7 @@ static void ws2812_set_state(enum led_color_t left, enum led_color_t right) {
 
 static enum ignition_state_t determine_ignition_state(void) {
 	enum ignition_state_t ignition_state = IGNITION_UNDEFINED;
-	//bool have_power = pwr_sense_is_active();
-	bool have_power = true;
-	if (have_power) {
+	if (ui.button_ignition_on.last_state == 1) {
 		/* Either "ignition on" or "ignition crank" */
 		if ((ui.button_ignition_crank.last_state == 0) && (ui.button_ignition_ccw.last_state == 1)) {
 			ignition_state = IGNITION_ON;
@@ -237,9 +232,38 @@ static bool is_turn_signal_audible(void) {
 }
 
 static void hard_shutoff(void) {
-	//pwr_keepalive_set_inactive();
-	turn_off_set_active();
-	while (true);
+//	turn_off_set_active();
+	while (true) {
+		led_yellow_set_active();
+//		__WFI();
+	}
+}
+
+static void ignition_off_powersave_mode(void) {
+	uln2003_ledleft_set_inactive();
+	uln2003_ledright_set_inactive();
+	uln2003_emergencylights_set_inactive();
+	led_siren_set_inactive();
+	led_green_set_inactive();
+	led_yellow_set_inactive();
+	led_red_set_inactive();
+	audio_shutoff();
+	sleep_set_active();
+	clock_switch_hsi();
+
+	unsigned int ticks = 0;
+	while (true) {
+		ticks++;
+		__WFI();
+		if (ticks >= TIMEOUT_SHUTOFF_AFTER_IGNITION_OFF_SECS * 100 / 9) {
+			/* Timeout too long in sleep mode. Shut device off. */
+			hard_shutoff();
+		} else if (ignition_on_is_active() || ignition_crank_is_active() || ignition_ccw_is_active()) {
+			/* Someone is turning the ignition, end hibernation. */
+			break;
+		}
+	}
+	clock_switch_hse_pll();
 }
 
 static void ui_set_counters(void) {
@@ -259,17 +283,18 @@ static void ui_set_counters(void) {
 
 	if (ui.ignition_state.last_state == IGNITION_OFF) {
 		ui.shutoff_tick++;
-		if (ui.shutoff_tick >= TIMEOUT_SOFT_SHUTOFF_AFTER_IGNITION_OFF_SECS * 100) {
-			/* about 60 seconds */
-			hard_shutoff();
+		if (ui.shutoff_tick >= 500) {
+			/* about 5 seconds */
+			ui.shutoff_tick = 0;
+			ignition_off_powersave_mode();
 		}
 	} else {
 		ui.shutoff_tick = 0;
 	}
 
 	ui.no_action_tick++;
-	if (ui.no_action_tick >= (TIMEOUT_HARD_SHUTOFF_AFTER_INACTIVITY_SECS * 100)) {
-		/* 10 minutes without any action */
+	if (ui.no_action_tick >= (TIMEOUT_SHUTOFF_AFTER_IDLE_SECS * 100)) {
+		/* Long tiem without any action */
 		ui.no_action_tick = 0;
 		ui.engine_state = ENGINE_OFF;
 		ui.turn_signal = TURN_OFF;
@@ -286,6 +311,7 @@ static void ui_have_action(void) {
 
 static void ui_handle_undervoltage(void) {
 	uint32_t voltage_millivolts = adc_get_ext_voltage_millivolts();
+	printf("ADC %lu mV\n", voltage_millivolts);
 	if (voltage_millivolts < 3500 * 3) {
 		ui.undervoltage_tick++;
 	} else {
@@ -375,7 +401,6 @@ static void ui_handle_ignition_switch(void) {
 	enum ignition_state_t current_ignition_state = determine_ignition_state();
 	bool ignition_state_changed = debounce_button(&ui.ignition_state, current_ignition_state);
 	if (ignition_state_changed) {
-
 		if ((ui.engine_state == ENGINE_OFF) && (ui.ignition_state.last_state == IGNITION_CRANK)) {
 			ui.engine_state = ENGINE_CRANKING;
 		} else if (((ui.engine_state == ENGINE_ON) || (ui.engine_state == ENGINE_CRANKING)) && ((ui.ignition_state.last_state == IGNITION_OFF) || (ui.ignition_state.last_state == IGNITION_CCW))) {
@@ -488,58 +513,7 @@ static void ui_check_siren_light(void) {
 	uln2003_emergencylights_set_to(enable_siren_light);
 }
 
-static void clock_switch_hsi(void) {
-	/* Enable HSI oscillator, 8.000 MHz */
-	RCC->CR |= RCC_CR_HSION;
-
-	/* Wait for HSI to become ready */
-	while (!(RCC->CR & RCC_CR_HSIRDY));
-
-	/* Switch clock source to HSI */
-	RCC->CFGR = (RCC->CFGR & ~RCC_CFGR_SW) | RCC_CFGR_SW_HSI;
-
-	/* Wait for HSI to become active clock */
-	while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_HSI);
-
-	/* Disable HSE and PLL to save power */
-	RCC->CR &= ~(RCC_CR_HSEON | RCC_CR_PLLON);
-}
-
-#if 0
-static void clock_switch_hse(void) {
-	/* Enable HSE oscillator, 8.000 MHz */
-	RCC->CR |= RCC_CR_HSEON;
-
-	/* Wait for HSE to become ready */
-	while (!(RCC->CR & RCC_CR_HSERDY));
-
-	/* Switch clock source to HSE */
-	RCC->CFGR = (RCC->CFGR & ~RCC_CFGR_SW) | RCC_CFGR_SW_HSE;
-
-	/* Wait for HSI to become active clock */
-	while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_HSE);
-
-	/* Disable HSI and PLL to save power */
-	RCC->CR &= ~(RCC_CR_HSION | RCC_CR_PLLON);
-}
-#endif
-
-static void enter_sleep_mode(void) {
-	uln2003_ledleft_set_inactive();
-	uln2003_ledright_set_inactive();
-	uln2003_emergencylights_set_inactive();
-	led_siren_set_inactive();
-	led_green_set_inactive();
-	led_yellow_set_inactive();
-	led_red_set_inactive();
-	audio_shutoff();
-	sleep_set_active();
-	clock_switch_hsi();
-	while (true) {
-		__WFI();
-		/* TODO: implement abort sleep condition */
-	}
-	clock_switch();
+static void ui_check_shutoff(void) {
 }
 
 int main(void) {
@@ -547,8 +521,6 @@ int main(void) {
 	printf("Device cold start complete.\n");
 	audio_set_volume(ui.audio_volume);
 	audio_init();
-
-	enter_sleep_mode();		/* TODO DEBUG ONLY */
 
 	while (!ui.disable_ui) {
 		/* Execute roughly 100 Hz */
@@ -564,6 +536,7 @@ int main(void) {
 		ui_set_top_leds();
 		ui_check_audio();
 		ui_check_siren_light();
+		ui_check_shutoff();
 	}
 
 	while (true);

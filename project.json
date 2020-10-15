@@ -3,6 +3,7 @@
 	"processor":	"stm32f103c8",
 	"target_clk":	72000000,
 	"clocksrc": 	"hse-pll",
+	"gen-clocks":	[ "hsi" ],
 	"hse-freq":		8000000,
 	"pinmap": {
 		"PB0": { "name": "led_red", "mode": "out" },

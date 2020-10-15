@@ -128,6 +128,14 @@ static struct uistate_t ui = {
 	.audio_volume = 1,
 };
 
+static void hard_shutoff(void) {
+	sleep_set_active();
+	turn_off_set_active();
+	while (true) {
+		__WFI();
+	}
+}
+
 static void enter_error_mode(unsigned int error_code) {
 	printf("%u: error code %u\n", timectr, error_code);
 	led_red_set_active();
@@ -136,10 +144,7 @@ static void enter_error_mode(unsigned int error_code) {
 	led_siren_set_inactive();
 	audio_shutoff();
 	for (volatile unsigned int i = i; i < 10000000; i++);
-	//turn_off_set_active();
-	while (true) {
-		__WFI();
-	}
+	hard_shutoff();
 }
 
 static void ws2812_convert_state(enum led_color_t color, uint8_t *data) {
@@ -231,14 +236,6 @@ static bool is_turn_signal_audible(void) {
 	return (audio_fileno == FILENO_TURN_SIGNAL_NO_ENGINE) || (audio_fileno == FILENO_TURN_SIGNAL_WITH_ENGINE);
 }
 
-static void hard_shutoff(void) {
-//	turn_off_set_active();
-	while (true) {
-		led_yellow_set_active();
-//		__WFI();
-	}
-}
-
 static void ignition_off_powersave_mode(void) {
 	uln2003_ledleft_set_inactive();
 	uln2003_ledright_set_inactive();
@@ -263,6 +260,8 @@ static void ignition_off_powersave_mode(void) {
 			break;
 		}
 	}
+
+	sleep_set_inactive();
 	clock_switch_hse_pll();
 }
 
@@ -311,7 +310,6 @@ static void ui_have_action(void) {
 
 static void ui_handle_undervoltage(void) {
 	uint32_t voltage_millivolts = adc_get_ext_voltage_millivolts();
-	printf("ADC %lu mV\n", voltage_millivolts);
 	if (voltage_millivolts < 3500 * 3) {
 		ui.undervoltage_tick++;
 	} else {

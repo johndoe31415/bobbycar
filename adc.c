@@ -21,6 +21,7 @@
  *	Johannes Bauer <JohannesBauer@gmx.de>
 **/
 
+#include <stdio.h>
 #include <string.h>
 #include <stm32f10x_adc.h>
 #include "adc.h"
@@ -29,7 +30,8 @@ static uint16_t adc_sample_value(void) {
 	ADC_ClearFlag(ADC1, ADC_FLAG_EOC);
 	ADC_SoftwareStartConvCmd(ADC1, ENABLE);
 	while (ADC_GetFlagStatus(ADC1, ADC_FLAG_EOC) == RESET);
-	return ADC_GetConversionValue(ADC1);
+	const uint16_t sample = ADC_GetConversionValue(ADC1);
+	return sample;
 }
 
 static void adc_add_sample(struct adc_result_t *result) {
@@ -39,6 +41,7 @@ static void adc_add_sample(struct adc_result_t *result) {
 	ADC_RegularChannelConfig(ADC1, ADC_Channel_Vrefint, 1, sample_time);
 	result->adu_vrefint += adc_sample_value();
 	result->sample_count += 1;
+
 }
 
 static void adc_average_samples(struct adc_result_t *result, unsigned int count) {

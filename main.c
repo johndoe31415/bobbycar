@@ -254,13 +254,14 @@ static void ignition_off_powersave_mode(void) {
 		__WFI();
 		if (ticks >= TIMEOUT_SHUTOFF_AFTER_IGNITION_OFF_SECS * 100 / 9) {
 			/* Timeout too long in sleep mode. Shut device off. */
+			clock_switch_hse_pll();
+			printf("Shutoff after ignition off for more than %u secs.\n", TIMEOUT_SHUTOFF_AFTER_IGNITION_OFF_SECS);
 			hard_shutoff();
 		} else if (ignition_on_is_active() || ignition_crank_is_active() || ignition_ccw_is_active()) {
 			/* Someone is turning the ignition, end hibernation. */
 			break;
 		}
 	}
-
 	sleep_set_inactive();
 	clock_switch_hse_pll();
 }
@@ -299,6 +300,7 @@ static void ui_set_counters(void) {
 		ui.turn_signal = TURN_OFF;
 		ui.siren = SIREN_OFF;
 		ui.hibernation = true;
+		printf("Shutoff after idle time of %u secs.\n", TIMEOUT_SHUTOFF_AFTER_IDLE_SECS);
 		hard_shutoff();
 	}
 }
@@ -315,8 +317,8 @@ static void ui_handle_undervoltage(void) {
 	} else {
 		ui.undervoltage_tick = 0;
 	}
-	if (ui.undervoltage_tick >= 100) {
-		/* One second of straight undervoltage, go into error mode. */
+	if (ui.undervoltage_tick >= 300) {
+		/* Three seconds of straight undervoltage, go into error mode. */
 		enter_error_mode(0);
 	}
 }
@@ -399,6 +401,7 @@ static void ui_handle_ignition_switch(void) {
 	enum ignition_state_t current_ignition_state = determine_ignition_state();
 	bool ignition_state_changed = debounce_button(&ui.ignition_state, current_ignition_state);
 	if (ignition_state_changed) {
+		ui_have_action();
 		if ((ui.engine_state == ENGINE_OFF) && (ui.ignition_state.last_state == IGNITION_CRANK)) {
 			ui.engine_state = ENGINE_CRANKING;
 		} else if (((ui.engine_state == ENGINE_ON) || (ui.engine_state == ENGINE_CRANKING)) && ((ui.ignition_state.last_state == IGNITION_OFF) || (ui.ignition_state.last_state == IGNITION_CCW))) {
@@ -519,6 +522,7 @@ int main(void) {
 	printf("Device cold start complete.\n");
 	audio_set_volume(ui.audio_volume);
 	audio_init();
+	sleep_set_inactive();
 
 	while (!ui.disable_ui) {
 		/* Execute roughly 100 Hz */

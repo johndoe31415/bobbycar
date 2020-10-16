@@ -7,6 +7,16 @@
   (lib_gate 0539fd52-890f-48af-97a9-bacfb79c9475)
   (position 48.26 17.78) (rotation 90.0) (mirror false)
  )
+ (symbol 53e6c86a-7030-46fc-a177-96552816add6
+  (component ecea783a-a1ab-48d2-91a3-34d38407faf1)
+  (lib_gate 5988c66a-f507-487e-9b40-486502e8c9bd)
+  (position -15.24 5.08) (rotation 0.0) (mirror false)
+ )
+ (symbol 640b1f16-69b0-4ef9-bf7f-bb3ac336b6c9
+  (component 47819156-94a0-441a-bd43-7090362d0e2d)
+  (lib_gate 09b6d6c4-2d37-432f-9471-a317aad9a499)
+  (position -25.4 5.08) (rotation 90.0) (mirror false)
+ )
  (symbol 653d45a1-b33d-4836-9476-f8ba7b9a295c
   (component 67ab5175-346c-4f88-98f9-fb6e2f00128b)
   (lib_gate 0539fd52-890f-48af-97a9-bacfb79c9475)
@@ -51,6 +61,11 @@
   (component 3ac83201-d047-4b3a-bfae-678e7048f66a)
   (lib_gate 0539fd52-890f-48af-97a9-bacfb79c9475)
   (position 25.4 -73.66) (rotation 90.0) (mirror false)
+ )
+ (symbol b7de8cb0-83db-49b2-a780-43a065d8f2f3
+  (component 004e867e-4bef-4d60-b25b-503966f41465)
+  (lib_gate 09b6d6c4-2d37-432f-9471-a317aad9a499)
+  (position -12.7 12.7) (rotation 90.0) (mirror false)
  )
  (symbol b943840c-2a4a-41c2-81d1-172381227350
   (component 82ea81a1-fbc5-4cbe-b632-34be20852b2c)
@@ -174,18 +189,19 @@
  )
  (netsegment 59f93318-1fb2-4e7a-83c0-b7966091cf82
   (net ca2f67e1-6d17-424a-9e5a-aa934318e451)
-  (junction a8a35954-54b3-449e-8a2c-60263e6750b2 (position -10.16 12.7))
+  (junction a8a35954-54b3-449e-8a2c-60263e6750b2 (position -7.62 12.7))
   (junction aeb02df8-39bb-4198-ae95-c17a11d3d42f (position 7.62 12.7))
   (line 461ad46b-10e6-4f3c-854b-33788816b5b7 (width 0.15875)
    (from (junction aeb02df8-39bb-4198-ae95-c17a11d3d42f))
    (to (junction a8a35954-54b3-449e-8a2c-60263e6750b2))
   )
+  (line affbe1c8-e3c7-4fb3-93ac-383c83c75b36 (width 0.15875)
+   (from (symbol b7de8cb0-83db-49b2-a780-43a065d8f2f3) (pin 771c2d8b-e4ad-487b-bcb1-fe2bc10c8a03))
+   (to (junction a8a35954-54b3-449e-8a2c-60263e6750b2))
+  )
   (line e27a9a5a-c4f0-4b1b-a443-af23d7149a35 (width 0.15875)
    (from (symbol 96730f58-6097-474f-a76c-cd01be1b59f2) (pin b100df20-3869-410b-b392-454d037b6d97))
    (to (junction aeb02df8-39bb-4198-ae95-c17a11d3d42f))
-  )
-  (label 8d427956-a0f1-40bb-8b8c-e287cfa9d208
-   (position -7.62 12.7) (rotation 0.0)
   )
  )
  (netsegment 62ad07c8-624d-462c-8163-ede1f7b156ca
@@ -219,6 +235,23 @@
   )
   (label a36419d7-dbac-440d-bb24-23c3c8802c3d
    (position -7.62 17.78) (rotation 0.0)
+  )
+ )
+ (netsegment 88762be3-898d-4548-ac6d-0f0e0f30f475
+  (net cd602f15-e484-4d28-bd5d-b58ffb277bcc)
+  (line 352728bb-444b-4794-b6ee-826dbd9592c5 (width 0.15875)
+   (from (symbol 96730f58-6097-474f-a76c-cd01be1b59f2) (pin a9d52158-381d-4652-87a5-4c8fe80254a4))
+   (to (symbol 53e6c86a-7030-46fc-a177-96552816add6) (pin 2731f213-ee20-4eb0-a18b-ad97d9fea7a0))
+  )
+  (label b9017430-23b5-44de-b5dd-5c8a112d86e2
+   (position -7.62 5.08) (rotation 0.0)
+  )
+ )
+ (netsegment 95181b92-2591-452a-8a10-afa6add321ce
+  (net 16ce97d1-9ea7-4de9-9935-654cccfa9558)
+  (line b18afbd7-31a7-4f17-90e4-1198aaf10a9f (width 0.15875)
+   (from (symbol 53e6c86a-7030-46fc-a177-96552816add6) (pin 2e4f8b10-ad5a-443e-b408-e183efaa4758))
+   (to (symbol 640b1f16-69b0-4ef9-bf7f-bb3ac336b6c9) (pin 771c2d8b-e4ad-487b-bcb1-fe2bc10c8a03))
   )
  )
  (netsegment 9719a74c-3514-4383-b313-3b7fb2afef8e

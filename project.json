@@ -39,7 +39,7 @@
 		"PA11": { "name": "ignition_crank", "mode": "in-up", "invert": true },
 
 		"PB15": { "name": "turn_off", "mode": "out", "initial": "off" },
-		"PB11": { "name": "sleep", "mode": "out", "initial": "off" }
+		"PB11": { "name": "sleep", "mode": "out", "initial": "on" }
 	},
 	"remap": [ "Remap_SWJ_NoJTRST" ]
 }
